@@ -71,6 +71,7 @@ public class AuthServiceImpl implements AuthService {
 
         // 3. Generujemy token
         var jwtToken = jwtService.generateToken(user);
+        System.out.println("ID zalogowanego użytkownika: " + user.getId());
         return AuthResponse.builder()
                 .token(jwtToken)
                 .role(user.getRole())

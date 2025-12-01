@@ -22,12 +22,13 @@ public class QuizQuestion {
     @Column(nullable = false)
     private String questionText;
 
-    @ElementCollection(fetch = FetchType.EAGER) // Prosta lista opcji (A, B, C)
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "quiz_question_options", joinColumns = @JoinColumn(name = "question_id"))
     @Column(name = "option_text")
     private List<String> options;
 
-    private int correctOptionIndex; // 0, 1, 2...
+    @JsonIgnore
+    private int correctOptionIndex;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "module_id")

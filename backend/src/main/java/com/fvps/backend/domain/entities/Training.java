@@ -1,5 +1,6 @@
 package com.fvps.backend.domain.entities;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fvps.backend.domain.enums.TrainingType;
 import jakarta.persistence.*;
 import lombok.*;
@@ -14,6 +15,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Entity
 @Table(name = "trainings")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Training {
 
     @Id
