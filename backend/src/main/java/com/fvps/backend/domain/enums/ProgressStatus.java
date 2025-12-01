@@ -4,6 +4,5 @@ public enum ProgressStatus {
     NOT_STARTED,
     IN_PROGRESS,
     COMPLETED,
-    FAILED,
-    VERIFIED
+    FAILED // Opcjonalnie, jeśli ktoś obleje quiz
 }

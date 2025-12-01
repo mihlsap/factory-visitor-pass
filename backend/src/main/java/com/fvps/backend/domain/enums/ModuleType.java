@@ -1,7 +1,7 @@
 package com.fvps.backend.domain.enums;
 
 public enum ModuleType {
-    SLIDE,
     VIDEO,
+    PDF_SLIDE,
     QUIZ
 }
