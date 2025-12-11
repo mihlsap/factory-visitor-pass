@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("${app.endpoints.verify}")
+@RequestMapping("/verify")
 @RequiredArgsConstructor
 public class VerificationController {
 
