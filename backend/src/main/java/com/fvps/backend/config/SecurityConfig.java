@@ -2,6 +2,7 @@ package com.fvps.backend.config;
 
 import com.fvps.backend.security.JwtFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -21,9 +22,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
-    // UWAGA: Usunęliśmy UserRepository, bo nie jest już tu potrzebne
 
-    // UWAGA: Usunęliśmy metodę userDetailsService(), bo przenieśliśmy ją do osobnej klasy
+    @Value("${app.endpoints.verify}")
+    private String verifyEndpoint;
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
@@ -42,10 +43,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(req -> req
                         .requestMatchers(
                                 "/api/auth/**",
-                                "/uploads/**",
-                                "/verify/**",
                                 "/error"
                         ).permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers(verifyEndpoint + "/**").hasAnyRole("GUARD", "ADMIN")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
