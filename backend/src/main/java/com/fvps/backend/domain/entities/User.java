@@ -4,6 +4,7 @@ import com.fvps.backend.domain.enums.UserRole;
 import com.fvps.backend.domain.enums.UserStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.proxy.HibernateProxy;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -11,9 +12,12 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
-@Data
+@Getter
+@Setter
+@ToString
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -43,26 +47,45 @@ public class User implements UserDetails { // Implementacja UserDetails potrzebn
     @Enumerated(EnumType.STRING)
     private UserStatus status;
 
-    // Pola opcjonalne (tylko dla USER)
     private String photoUrl;
     private String companyName;
 
-    // Reset hasła
+    @Column(name = "phone_number")
+    private String phoneNumber;
+
+    @Builder.Default
+    @Column(name = "failed_login_attempts")
+    private int failedLoginAttempts = 0;
+
+    @Column(name = "lockout_time")
+    private LocalDateTime lockoutTime;
+
     private String resetToken;
     private LocalDateTime resetTokenExpiry;
 
-    // Pola audytowe
+    private String twoFactorCode;
+    private LocalDateTime twoFactorCodeExpiry;
+
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    private LocalDateTime lastLogin;
+
+    @Version
+    private Long version;
 
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
         if (this.status == null) {
-            this.status = UserStatus.ACTIVE; // Domyślnie aktywny
+            this.status = UserStatus.ACTIVE;
         }
     }
 
-    // --- Metody z interfejsu UserDetails (Dla Spring Security) ---
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -75,18 +98,38 @@ public class User implements UserDetails { // Implementacja UserDetails potrzebn
     }
 
     @Override
-    public boolean isAccountNonExpired() { return true; }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return status != UserStatus.BLOCKED; // Tu jest nasza blokada!
+    public boolean isAccountNonExpired() {
+        return true;
     }
 
     @Override
-    public boolean isCredentialsNonExpired() { return true; }
+    public boolean isAccountNonLocked() {
+        return status != UserStatus.BLOCKED;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
 
     @Override
     public boolean isEnabled() {
-        return status != UserStatus.DELETED; // Deleted userzy są wyłączeni
+        return status != UserStatus.DELETED;
+    }
+
+    @Override
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null) return false;
+        Class<?> oEffectiveClass = o instanceof HibernateProxy ? ((HibernateProxy) o).getHibernateLazyInitializer().getPersistentClass() : o.getClass();
+        Class<?> thisEffectiveClass = this instanceof HibernateProxy ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass() : this.getClass();
+        if (thisEffectiveClass != oEffectiveClass) return false;
+        User user = (User) o;
+        return getId() != null && Objects.equals(getId(), user.getId());
+    }
+
+    @Override
+    public final int hashCode() {
+        return this instanceof HibernateProxy ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass().hashCode() : getClass().hashCode();
     }
 }
