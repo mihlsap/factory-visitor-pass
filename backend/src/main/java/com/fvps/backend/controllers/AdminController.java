@@ -5,10 +5,7 @@ import com.fvps.backend.domain.dto.user.UserSummaryDto;
 import com.fvps.backend.domain.entities.AuditLog;
 import com.fvps.backend.domain.enums.AppMessage;
 import com.fvps.backend.domain.enums.UserStatus;
-import com.fvps.backend.services.AdminService;
-import com.fvps.backend.services.AuditLogService;
-import com.fvps.backend.services.TrainingService;
-import com.fvps.backend.services.UserService;
+import com.fvps.backend.services.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,7 +16,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -28,23 +24,27 @@ import java.util.UUID;
 public class AdminController {
 
     private final AdminService adminService;
-    private final TrainingService trainingService;
     private final UserService userService;
     private final AuditLogService auditLogService;
+    private final TrainingContentService trainingContentService;
+    private final TrainingProgressService trainingProgressService;
 
     @PostMapping("/trainings")
     public ResponseEntity<TrainingResponseDto> createTraining(@Valid @RequestBody CreateTrainingRequest request) {
-        return ResponseEntity.ok(trainingService.createTraining(request));
+        return ResponseEntity.ok(trainingContentService.createTraining(request));
     }
 
     @GetMapping("/trainings/{id}")
     public ResponseEntity<TrainingResponseDto> getTraining(@PathVariable UUID id) {
-        return ResponseEntity.ok(trainingService.getTrainingDetails(id));
+        return ResponseEntity.ok(trainingContentService.getTrainingDetails(id));
     }
 
     @PutMapping("/trainings/{id}")
-    public ResponseEntity<TrainingResponseDto> updateTraining(@PathVariable UUID id, @RequestBody CreateTrainingRequest request) {
-        return ResponseEntity.ok(trainingService.updateTraining(id, request));
+    public ResponseEntity<TrainingResponseDto> updateTraining(
+            @PathVariable UUID id,
+            @Valid @RequestBody CreateTrainingRequest request
+    ) {
+        return ResponseEntity.ok(trainingContentService.updateTraining(id, request));
     }
 
     @PostMapping("/trainings/{trainingId}/modules")
@@ -52,7 +52,7 @@ public class AdminController {
             @PathVariable UUID trainingId,
             @Valid @RequestBody CreateModuleRequest request
     ) {
-        return ResponseEntity.ok(trainingService.addModuleToTraining(trainingId, request));
+        return ResponseEntity.ok(trainingContentService.addModuleToTraining(trainingId, request));
     }
 
     @PostMapping("/modules/{moduleId}/questions")
@@ -60,7 +60,7 @@ public class AdminController {
             @PathVariable UUID moduleId,
             @Valid @RequestBody CreateQuestionRequest request
     ) {
-        return ResponseEntity.ok(trainingService.addQuestionToModule(moduleId, request));
+        return ResponseEntity.ok(trainingContentService.addQuestionToModule(moduleId, request));
     }
 
     @PutMapping("/modules/{moduleId}")
@@ -68,12 +68,12 @@ public class AdminController {
             @PathVariable UUID moduleId,
             @Valid @RequestBody UpdateModuleRequest request
     ) {
-        return ResponseEntity.ok(trainingService.updateModule(moduleId, request));
+        return ResponseEntity.ok(trainingContentService.updateModule(moduleId, request));
     }
 
     @DeleteMapping("/modules/{moduleId}")
     public ResponseEntity<TrainingResponseDto> deleteModule(@PathVariable UUID moduleId) {
-        return ResponseEntity.ok(trainingService.deleteModule(moduleId));
+        return ResponseEntity.ok(trainingContentService.deleteModule(moduleId));
     }
 
     @PutMapping("/questions/{questionId}")
@@ -81,27 +81,34 @@ public class AdminController {
             @PathVariable UUID questionId,
             @Valid @RequestBody UpdateQuestionRequest request
     ) {
-        return ResponseEntity.ok(trainingService.updateQuestion(questionId, request));
+        return ResponseEntity.ok(trainingContentService.updateQuestion(questionId, request));
     }
 
     @DeleteMapping("/questions/{questionId}")
     public ResponseEntity<TrainingResponseDto> deleteQuestion(@PathVariable UUID questionId) {
-        return ResponseEntity.ok(trainingService.deleteQuestion(questionId));
+        return ResponseEntity.ok(trainingContentService.deleteQuestion(questionId));
     }
 
     @GetMapping("/trainings")
-    public ResponseEntity<List<TrainingSummaryDto>> getAllTrainings() {
-        return ResponseEntity.ok(trainingService.getAllTrainings());
+    public ResponseEntity<Page<TrainingSummaryDto>> getAllTrainings(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        var pageable = PageRequest.of(page, size, Sort.by("title"));
+        return ResponseEntity.ok(trainingContentService.getAllTrainings(pageable));
     }
 
     @DeleteMapping("/trainings/{id}")
     public ResponseEntity<Void> deleteTraining(@PathVariable UUID id) {
-        trainingService.deleteTraining(id);
+        trainingContentService.deleteTraining(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/users")
-    public ResponseEntity<Page<UserSummaryDto>> getAllUsers(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+    public ResponseEntity<Page<UserSummaryDto>> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
         var pageable = PageRequest.of(page, size, Sort.by("surname"));
         return ResponseEntity.ok(userService.getAllUsersSummary(pageable));
     }
@@ -111,20 +118,20 @@ public class AdminController {
         return ResponseEntity.ok(userService.getUserSummaryById(id));
     }
 
-    @DeleteMapping("/users/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
-        adminService.deleteUser(id);
-        return ResponseEntity.noContent().build();
-    }
-
     @PostMapping("/users/{userId}/assign/{trainingId}")
-    public ResponseEntity<String> assignTraining(@PathVariable UUID userId, @PathVariable UUID trainingId) {
-        trainingService.assignTrainingToUser(userId, trainingId);
+    public ResponseEntity<String> assignTraining(
+            @PathVariable UUID userId,
+            @PathVariable UUID trainingId
+    ) {
+        trainingProgressService.assignTrainingToUser(userId, trainingId);
         return ResponseEntity.ok(AppMessage.TRAINING_ASSIGNED.name());
     }
 
     @PutMapping("/users/{userId}/status")
-    public ResponseEntity<String> changeUserStatus(@PathVariable UUID userId, @RequestParam UserStatus status) {
+    public ResponseEntity<String> changeUserStatus(
+            @PathVariable UUID userId,
+            @RequestParam UserStatus status
+    ) {
         adminService.changeUserStatus(userId, status);
         return ResponseEntity.ok(AppMessage.USER_STATUS_CHANGED.name());
     }
@@ -132,15 +139,12 @@ public class AdminController {
 
     @GetMapping("/users/{userId}/pass-preview")
     public ResponseEntity<byte[]> generatePass(@PathVariable UUID userId) {
-        try {
-            byte[] pdfBytes = adminService.generatePassPdf(userId);
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=pass.pdf")
-                    .contentType(MediaType.APPLICATION_PDF)
-                    .body(pdfBytes);
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(403).body(null);
-        }
+        byte[] pdfBytes = adminService.generatePassPdf(userId);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=pass.pdf")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdfBytes);
     }
 
     @GetMapping("/logs")
@@ -153,23 +157,43 @@ public class AdminController {
     }
 
     @GetMapping("/users/{userId}/trainings")
-    public ResponseEntity<List<UserTrainingDto>> getUserTrainings(@PathVariable UUID userId) {
-        return ResponseEntity.ok(trainingService.getUserTrainingsByUserId(userId));
-    }
-
-    @PostMapping("/users/{userId}/resend-pass")
-    public ResponseEntity<String> resendPass(@PathVariable UUID userId) {
-        adminService.resendPassEmail(userId);
-        return ResponseEntity.ok(AppMessage.PASS_SENT.name());
+    public ResponseEntity<Page<UserTrainingDto>> getUserTrainings(
+            @PathVariable UUID userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
+        return ResponseEntity.ok(trainingProgressService.getUserTrainingsByUserId(userId, pageable));
     }
 
     @GetMapping("/modules/{moduleId}")
     public ResponseEntity<ModuleDto> getModule(@PathVariable UUID moduleId) {
-        return ResponseEntity.ok(trainingService.getModule(moduleId));
+        return ResponseEntity.ok(trainingContentService.getModule(moduleId));
     }
 
     @GetMapping("/questions/{questionId}")
     public ResponseEntity<QuestionDto> getQuestion(@PathVariable UUID questionId) {
-        return ResponseEntity.ok(trainingService.getQuestion(questionId));
+        return ResponseEntity.ok(trainingContentService.getQuestion(questionId));
+    }
+
+    @DeleteMapping("/users/{userId}/assign/{trainingId}")
+    public ResponseEntity<Void> unassignTraining(@PathVariable UUID userId, @PathVariable UUID trainingId) {
+        trainingProgressService.unassignTrainingFromUser(userId, trainingId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/users/{userId}/trainings/{trainingId}/revoke-completion")
+    public ResponseEntity<String> revokeCompletion(@PathVariable UUID userId, @PathVariable UUID trainingId) {
+        trainingProgressService.revokeTrainingCompletion(userId, trainingId);
+        return ResponseEntity.ok(AppMessage.TRAINING_REVOKED.name());
+    }
+
+    @PostMapping("/users/{userId}/assign-level/{level}")
+    public ResponseEntity<String> assignTrainingsByLevel(
+            @PathVariable UUID userId,
+            @PathVariable int level
+    ) {
+        trainingProgressService.assignTrainingsByLevelToUser(userId, level);
+        return ResponseEntity.ok("Successfully assigned all missing trainings for level " + level);
     }
 }
