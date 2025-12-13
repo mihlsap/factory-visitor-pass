@@ -8,9 +8,5 @@ public interface AdminService {
 
     void changeUserStatus(UUID userId, UserStatus status);
 
-    void deleteUser(UUID id);
-
     byte[] generatePassPdf(UUID userId);
-
-    void resendPassEmail(UUID userId);
 }
