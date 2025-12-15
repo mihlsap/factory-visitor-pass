@@ -15,21 +15,21 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class RegisterRequest {
 
-    @Schema(description = "Imię użytkownika", example = "Jan", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "First name", example = "Jan", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "First name is required")
     private String name;
 
-    @Schema(description = "Nazwisko użytkownika", example = "Kowalski", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "Last name", example = "Kowalski", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "Last name is required")
     private String surname;
 
-    @Schema(description = "Adres email (unikalny w systemie)", example = "jan.kowalski@fvps.com", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "Email address (must be unique)", example = "jan.kowalski@fvps.com", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
     private String email;
 
     @Schema(
-            description = "Hasło (min. 8 znaków, 1 duża litera, 1 mała litera, 1 cyfra, 1 znak specjalny)",
+            description = "Password (min 8 chars, 1 uppercase, 1 lowercase, 1 digit, 1 special char)",
             example = "StrongPass1!",
             requiredMode = Schema.RequiredMode.REQUIRED
     )
@@ -41,13 +41,13 @@ public class RegisterRequest {
     private String password;
 
     @Schema(
-            description = "Nazwa firmy. Dla pracowników wewnętrznych (domena @fvps.com) jest nadpisywana automatycznie.",
-            example = "External Logistics Sp. z o.o."
+            description = "Company name. Automatically overridden for internal employees (@fvps.com domain).",
+            example = "External Logistics Ltd."
     )
     private String companyName;
 
     @Schema(
-            description = "Numer telefonu w formacie E.164",
+            description = "Phone number in E.164 format",
             example = "+48123456789"
     )
     @Pattern(
