@@ -1,11 +1,21 @@
 package com.fvps.backend.controllers;
 
-import com.fvps.backend.domain.dto.training.*;
+import com.fvps.backend.domain.dto.training.CreateTrainingRequest;
+import com.fvps.backend.domain.dto.training.TrainingResponseDto;
+import com.fvps.backend.domain.dto.training.TrainingSummaryDto;
 import com.fvps.backend.domain.dto.user.UserSummaryDto;
 import com.fvps.backend.domain.entities.AuditLog;
 import com.fvps.backend.domain.enums.AppMessage;
 import com.fvps.backend.domain.enums.UserStatus;
 import com.fvps.backend.services.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,6 +31,8 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
+@Tag(name = "Admin Panel", description = "Endpoints for managing users, trainings, system logs, and user statuses.")
+@SecurityRequirement(name = "bearerAuth")
 public class AdminController {
 
     private final AdminService adminService;
@@ -29,171 +41,143 @@ public class AdminController {
     private final TrainingContentService trainingContentService;
     private final TrainingProgressService trainingProgressService;
 
-    @PostMapping("/trainings")
-    public ResponseEntity<TrainingResponseDto> createTraining(@Valid @RequestBody CreateTrainingRequest request) {
-        return ResponseEntity.ok(trainingContentService.createTraining(request));
-    }
-
-    @GetMapping("/trainings/{id}")
-    public ResponseEntity<TrainingResponseDto> getTraining(@PathVariable UUID id) {
-        return ResponseEntity.ok(trainingContentService.getTrainingDetails(id));
-    }
-
-    @PutMapping("/trainings/{id}")
-    public ResponseEntity<TrainingResponseDto> updateTraining(
-            @PathVariable UUID id,
-            @Valid @RequestBody CreateTrainingRequest request
-    ) {
-        return ResponseEntity.ok(trainingContentService.updateTraining(id, request));
-    }
-
-    @PostMapping("/trainings/{trainingId}/modules")
-    public ResponseEntity<TrainingResponseDto> addModule(
-            @PathVariable UUID trainingId,
-            @Valid @RequestBody CreateModuleRequest request
-    ) {
-        return ResponseEntity.ok(trainingContentService.addModuleToTraining(trainingId, request));
-    }
-
-    @PostMapping("/modules/{moduleId}/questions")
-    public ResponseEntity<TrainingResponseDto> addQuestion(
-            @PathVariable UUID moduleId,
-            @Valid @RequestBody CreateQuestionRequest request
-    ) {
-        return ResponseEntity.ok(trainingContentService.addQuestionToModule(moduleId, request));
-    }
-
-    @PutMapping("/modules/{moduleId}")
-    public ResponseEntity<TrainingResponseDto> updateModule(
-            @PathVariable UUID moduleId,
-            @Valid @RequestBody UpdateModuleRequest request
-    ) {
-        return ResponseEntity.ok(trainingContentService.updateModule(moduleId, request));
-    }
-
-    @DeleteMapping("/modules/{moduleId}")
-    public ResponseEntity<TrainingResponseDto> deleteModule(@PathVariable UUID moduleId) {
-        return ResponseEntity.ok(trainingContentService.deleteModule(moduleId));
-    }
-
-    @PutMapping("/questions/{questionId}")
-    public ResponseEntity<TrainingResponseDto> updateQuestion(
-            @PathVariable UUID questionId,
-            @Valid @RequestBody UpdateQuestionRequest request
-    ) {
-        return ResponseEntity.ok(trainingContentService.updateQuestion(questionId, request));
-    }
-
-    @DeleteMapping("/questions/{questionId}")
-    public ResponseEntity<TrainingResponseDto> deleteQuestion(@PathVariable UUID questionId) {
-        return ResponseEntity.ok(trainingContentService.deleteQuestion(questionId));
-    }
-
-    @GetMapping("/trainings")
-    public ResponseEntity<Page<TrainingSummaryDto>> getAllTrainings(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
-    ) {
-        var pageable = PageRequest.of(page, size, Sort.by("title"));
-        return ResponseEntity.ok(trainingContentService.getAllTrainings(pageable));
-    }
-
-    @DeleteMapping("/trainings/{id}")
-    public ResponseEntity<Void> deleteTraining(@PathVariable UUID id) {
-        trainingContentService.deleteTraining(id);
-        return ResponseEntity.noContent().build();
-    }
-
+    @Operation(summary = "Get All Users", description = "Retrieves a paginated list of all users registered in the system.")
     @GetMapping("/users")
     public ResponseEntity<Page<UserSummaryDto>> getAllUsers(
+            @Parameter(description = "Page number (0-based)", example = "0")
             @RequestParam(defaultValue = "0") int page,
+
+            @Parameter(description = "Number of items per page", example = "10")
             @RequestParam(defaultValue = "10") int size
     ) {
         var pageable = PageRequest.of(page, size, Sort.by("surname"));
         return ResponseEntity.ok(userService.getAllUsersSummary(pageable));
     }
 
-    @GetMapping("/users/{id}")
-    public ResponseEntity<UserSummaryDto> getUserById(@PathVariable UUID id) {
-        return ResponseEntity.ok(userService.getUserSummaryById(id));
-    }
-
-    @PostMapping("/users/{userId}/assign/{trainingId}")
-    public ResponseEntity<String> assignTraining(
-            @PathVariable UUID userId,
-            @PathVariable UUID trainingId
+    @Operation(summary = "Get User Details", description = "Retrieves detailed information about a specific user by their ID.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "User details returned"),
+            @ApiResponse(responseCode = "404", description = "User not found")
+    })
+    @GetMapping("/users/{userId}")
+    public ResponseEntity<UserSummaryDto> getUserDetails(
+            @Parameter(description = "User UUID", required = true)
+            @PathVariable UUID userId
     ) {
-        trainingProgressService.assignTrainingToUser(userId, trainingId);
-        return ResponseEntity.ok(AppMessage.TRAINING_ASSIGNED.name());
+        return ResponseEntity.ok(userService.getUserSummaryById(userId));
     }
 
+    @Operation(summary = "Change User Status", description = "Updates the status of a user (e.g., BLOCK, ACTIVATE, DELETE).")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Status updated successfully"),
+            @ApiResponse(responseCode = "404", description = "User not found")
+    })
     @PutMapping("/users/{userId}/status")
     public ResponseEntity<String> changeUserStatus(
+            @Parameter(description = "User UUID", required = true)
             @PathVariable UUID userId,
+
+            @Parameter(description = "New status to apply", required = true)
             @RequestParam UserStatus status
     ) {
         adminService.changeUserStatus(userId, status);
         return ResponseEntity.ok(AppMessage.USER_STATUS_CHANGED.name());
     }
 
+    @Operation(summary = "Assign Training", description = "Manually assigns a specific training to a user.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Training assigned successfully"),
+            @ApiResponse(responseCode = "400", description = "Training already assigned or invalid"),
+            @ApiResponse(responseCode = "404", description = "User or Training not found")
+    })
+    @PostMapping("/users/{userId}/assign/{trainingId}")
+    public ResponseEntity<String> assignTraining(
+            @Parameter(description = "User UUID", required = true)
+            @PathVariable UUID userId,
 
-    @GetMapping("/users/{userId}/pass-preview")
-    public ResponseEntity<byte[]> generatePass(@PathVariable UUID userId) {
-        byte[] pdfBytes = adminService.generatePassPdf(userId);
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=pass.pdf")
-                .contentType(MediaType.APPLICATION_PDF)
-                .body(pdfBytes);
+            @Parameter(description = "Training UUID", required = true)
+            @PathVariable UUID trainingId
+    ) {
+        trainingProgressService.assignTrainingToUser(userId, trainingId);
+        return ResponseEntity.ok(AppMessage.TRAINING_ASSIGNED.name());
     }
 
+    @Operation(summary = "Create Training", description = "Creates a new training with modules and questions.")
+    @ApiResponse(responseCode = "200", description = "Training created successfully", content = @Content(schema = @Schema(implementation = TrainingResponseDto.class)))
+    @PostMapping("/trainings")
+    public ResponseEntity<TrainingResponseDto> createTraining(
+            @Valid @RequestBody CreateTrainingRequest request
+    ) {
+        return ResponseEntity.ok(trainingContentService.createTraining(request));
+    }
+
+    @Operation(summary = "Get All Trainings", description = "Retrieves a paginated list of all available trainings.")
+    @GetMapping("/trainings")
+    public ResponseEntity<Page<TrainingSummaryDto>> getAllTrainings(
+            @Parameter(description = "Page number (0-based)", example = "0")
+            @RequestParam(defaultValue = "0") int page,
+
+            @Parameter(description = "Number of items per page", example = "10")
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        var pageable = PageRequest.of(page, size, Sort.by("title"));
+        return ResponseEntity.ok(trainingContentService.getAllTrainings(pageable));
+    }
+
+    @Operation(summary = "Update Training", description = "Updates an existing training structure, including modules and questions.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Training updated successfully"),
+            @ApiResponse(responseCode = "404", description = "Training not found"),
+            @ApiResponse(responseCode = "409", description = "Optimistic locking failure (version mismatch)")
+    })
+    @PutMapping("/trainings/{trainingId}")
+    public ResponseEntity<TrainingResponseDto> updateTraining(
+            @Parameter(description = "Training UUID", required = true)
+            @PathVariable UUID trainingId,
+
+            @Valid @RequestBody CreateTrainingRequest request
+    ) {
+        return ResponseEntity.ok(trainingContentService.updateTraining(trainingId, request));
+    }
+
+    @Operation(summary = "Delete Training", description = "Soft deletes a training. It will no longer be assignable to new users.")
+    @DeleteMapping("/trainings/{trainingId}")
+    public ResponseEntity<String> deleteTraining(
+            @Parameter(description = "Training UUID", required = true)
+            @PathVariable UUID trainingId
+    ) {
+        trainingContentService.deleteTraining(trainingId);
+        return ResponseEntity.ok(AppMessage.TRAINING_DELETED.name());
+    }
+
+    @Operation(summary = "Get Audit Logs", description = "Retrieves system audit logs for monitoring user activities.")
     @GetMapping("/logs")
     public ResponseEntity<Page<AuditLog>> getAuditLogs(
+            @Parameter(description = "Page number (0-based)", example = "0")
             @RequestParam(defaultValue = "0") int page,
+
+            @Parameter(description = "Number of items per page", example = "20")
             @RequestParam(defaultValue = "20") int size
     ) {
         var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "timestamp"));
         return ResponseEntity.ok(auditLogService.getAllLogs(pageable));
     }
 
-    @GetMapping("/users/{userId}/trainings")
-    public ResponseEntity<Page<UserTrainingDto>> getUserTrainings(
-            @PathVariable UUID userId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+    @Operation(summary = "Preview User Pass", description = "Generates a PDF pass preview for a specific user (Admin only feature).")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "PDF file returned", content = @Content(mediaType = "application/pdf")),
+            @ApiResponse(responseCode = "400", description = "User does not have valid trainings")
+    })
+    @GetMapping("/users/{userId}/pass-preview")
+    public ResponseEntity<byte[]> generatePass(
+            @Parameter(description = "User UUID", required = true)
+            @PathVariable UUID userId
     ) {
-        var pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
-        return ResponseEntity.ok(trainingProgressService.getUserTrainingsByUserId(userId, pageable));
-    }
+        byte[] pdfBytes = adminService.generatePassPdf(userId);
 
-    @GetMapping("/modules/{moduleId}")
-    public ResponseEntity<ModuleDto> getModule(@PathVariable UUID moduleId) {
-        return ResponseEntity.ok(trainingContentService.getModule(moduleId));
-    }
-
-    @GetMapping("/questions/{questionId}")
-    public ResponseEntity<QuestionDto> getQuestion(@PathVariable UUID questionId) {
-        return ResponseEntity.ok(trainingContentService.getQuestion(questionId));
-    }
-
-    @DeleteMapping("/users/{userId}/assign/{trainingId}")
-    public ResponseEntity<Void> unassignTraining(@PathVariable UUID userId, @PathVariable UUID trainingId) {
-        trainingProgressService.unassignTrainingFromUser(userId, trainingId);
-        return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping("/users/{userId}/trainings/{trainingId}/revoke-completion")
-    public ResponseEntity<String> revokeCompletion(@PathVariable UUID userId, @PathVariable UUID trainingId) {
-        trainingProgressService.revokeTrainingCompletion(userId, trainingId);
-        return ResponseEntity.ok(AppMessage.TRAINING_REVOKED.name());
-    }
-
-    @PostMapping("/users/{userId}/assign-level/{level}")
-    public ResponseEntity<String> assignTrainingsByLevel(
-            @PathVariable UUID userId,
-            @PathVariable int level
-    ) {
-        trainingProgressService.assignTrainingsByLevelToUser(userId, level);
-        return ResponseEntity.ok("Successfully assigned all missing trainings for level " + level);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=pass.pdf")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdfBytes);
     }
 }
