@@ -21,6 +21,17 @@ public class AdminServiceImpl implements AdminService {
         userService.changeUserStatus(userId, status);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * <b>Implementation Note:</b>
+     * <ul>
+     * <li>Validates that the user status is strictly {@link UserStatus#ACTIVE}.</li>
+     * <li>Verifies that the user has at least one valid training certificate.</li>
+     * <li><b>Side Effect:</b> Logs an audit event {@code PASS_PREVIEWED} to record that an admin accessed this document.</li>
+     * </ul>
+     * </p>
+     */
     @Override
     public byte[] generatePassPdf(UUID userId) {
         var user = userService.getById(userId);
