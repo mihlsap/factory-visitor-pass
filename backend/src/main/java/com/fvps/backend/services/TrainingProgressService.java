@@ -1,6 +1,7 @@
 package com.fvps.backend.services;
 
 import com.fvps.backend.domain.dto.training.QuizSubmissionDto;
+import com.fvps.backend.domain.dto.training.TrainingResponseDto;
 import com.fvps.backend.domain.dto.training.UserTrainingDto;
 import com.fvps.backend.domain.entities.Training;
 import com.fvps.backend.domain.entities.TrainingModule;
@@ -144,4 +145,22 @@ public interface TrainingProgressService {
      * @param level  the target security level (1-4).
      */
     void assignTrainingsByLevelToUser(UUID userId, int level);
+
+    /**
+     * Retrieves detailed information about a training specifically for a given user context.
+     * <p>
+     * Unlike the administrative view, this method personalises the response data by:
+     * <ul>
+     * <li>Calculating the completion status ({@code completed}) for each module based on the user's progress.</li>
+     * <li>Determining the {@code currentModuleId} to allow the frontend to implement a "Resume/Start" button.</li>
+     * <li><b>Sanitising sensitive data:</b> It hides correct answers for quizzes to prevent cheating.</li>
+     * </ul>
+     * </p>
+     *
+     * @param trainingId the UUID of the training definition.
+     * @param userEmail       email of the authenticated user requesting the details.
+     * @return a {@link TrainingResponseDto} containing the syllabus, module statuses, and resume point.
+     * @throws RuntimeException if the user is not assigned to this training or the record is missing.
+     */
+    TrainingResponseDto getTrainingDetailsForUser(UUID trainingId, String userEmail);
 }

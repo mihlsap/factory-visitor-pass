@@ -1,8 +1,6 @@
 package com.fvps.backend.services.impl;
 
-import com.fvps.backend.domain.dto.training.QuizSubmissionDto;
-import com.fvps.backend.domain.dto.training.TrainingSummaryDto;
-import com.fvps.backend.domain.dto.training.UserTrainingDto;
+import com.fvps.backend.domain.dto.training.*;
 import com.fvps.backend.domain.entities.*;
 import com.fvps.backend.domain.enums.ModuleType;
 import com.fvps.backend.domain.enums.ProgressStatus;
@@ -25,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -359,6 +358,92 @@ public class TrainingProgressServiceImpl implements TrainingProgressService {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * <b>Implementation Note:</b>
+     * <ul>
+     * <li><b>Resume Logic:</b> The {@code currentModuleId} is calculated as follows:
+     * <ul>
+     * <li>If {@code COMPLETED}: Points to the <b>first module</b> (allowing review).</li>
+     * <li>If {@code NOT_STARTED}: Points to the <b>first module</b> (entry point).</li>
+     * <li>If {@code IN_PROGRESS}: Points to the saved {@code currentModule} from a database.</li>
+     * </ul>
+     * </li>
+     * <li><b>Security:</b> This implementation explicitly hides the {@code correctOptionIndex}
+     * for all quiz questions to prevent users from inspecting the network traffic for answers.</li>
+     * <li><b>Progress Flag:</b> Modules are marked as {@code completed} if their sequence order
+     * is strictly lower than the user's current progress index.</li>
+     * </ul>
+     * </p>
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public TrainingResponseDto getTrainingDetailsForUser(UUID trainingId, String userEmail) {
+        User user = userRepository.findByEmail(userEmail).orElseThrow(() -> new RuntimeException("User not found"));
+        UserTrainingStatus status = userTrainingStatusRepository.findByUserIdAndTrainingId(user.getId(), trainingId)
+                .orElseThrow(() -> new RuntimeException("Training not assigned or access denied"));
+
+        Training training = status.getTraining();
+
+        UUID currentModuleId = null;
+        if (status.getStatus() == ProgressStatus.COMPLETED) {
+            if (!training.getModules().isEmpty()) {
+                currentModuleId = training.getModules().getFirst().getId();
+            }
+        } else if (status.getCurrentModule() != null) {
+            currentModuleId = status.getCurrentModule().getId();
+        } else {
+            var firstModule = moduleRepository.findFirstByTrainingIdOrderByOrderIndexAsc(trainingId).orElse(null);
+            if (firstModule != null) {
+                currentModuleId = firstModule.getId();
+            }
+        }
+
+        final int currentProgressIndex;
+
+        if (status.getStatus() == ProgressStatus.COMPLETED) {
+            currentProgressIndex = Integer.MAX_VALUE;
+        } else if (status.getCurrentModule() != null) {
+            currentProgressIndex = status.getCurrentModule().getOrderIndex();
+        } else {
+            currentProgressIndex = -1;
+        }
+
+        List<ModuleDto> modules = training.getModules().stream()
+                .sorted(Comparator.comparingInt(TrainingModule::getOrderIndex))
+                .map(module -> {
+                    boolean isCompleted = module.getOrderIndex() < currentProgressIndex;
+
+                    if (status.getStatus() == ProgressStatus.COMPLETED) {
+                        isCompleted = true;
+                    }
+
+                    return ModuleDto.builder()
+                            .id(module.getId())
+                            .title(module.getTitle())
+                            .type(module.getType())
+                            .contentUrl(module.getContentUrl())
+                            .orderIndex(module.getOrderIndex())
+                            .completed(isCompleted)
+                            .questions(module.getType() == ModuleType.QUIZ ? mapQuestionsForUser(module) : null)
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        return TrainingResponseDto.builder()
+                .id(training.getId())
+                .title(training.getTitle())
+                .description(training.getDescription())
+                .type(training.getType())
+                .validityPeriodDays(training.getValidityPeriodDays())
+                .passingThreshold(training.getPassingThreshold())
+                .securityLevel(training.getSecurityLevel())
+                .modules(modules)
+                .currentModuleId(currentModuleId)
+                .build();
+    }
+
     private UserTrainingStatus getUserTrainingStatus(String email, UUID trainingId) {
         User user = userRepository.findByEmail(email).orElseThrow();
         return userTrainingStatusRepository.findByUserId(user.getId()).stream()
@@ -479,5 +564,18 @@ public class TrainingProgressServiceImpl implements TrainingProgressService {
         }
 
         return currentModule.getQuestions();
+    }
+
+    private List<QuestionDto> mapQuestionsForUser(TrainingModule module) {
+        if (module.getQuestions() == null) return List.of();
+
+        return module.getQuestions().stream()
+                .map(q -> QuestionDto.builder()
+                        .id(q.getId())
+                        .questionText(q.getQuestionText())
+                        .options(q.getOptions())
+                        .correctOptionIndex(null)
+                        .build())
+                .collect(Collectors.toList());
     }
 }
