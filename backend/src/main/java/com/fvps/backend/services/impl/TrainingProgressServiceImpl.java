@@ -110,6 +110,17 @@ public class TrainingProgressServiceImpl implements TrainingProgressService {
         return fetchValidTrainingsInternal(userId);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * <b>Implementation Note:</b>
+     * <ul>
+     * <li><b>Sequential Logic:</b> Enforces strict order. The user cannot complete module B if the system thinks they are on module A.</li>
+     * <li><b>Validation:</b> Rejects completion requests for {@link ModuleType#QUIZ}. Quizzes must be completed via {@link #submitQuiz}.</li>
+     * <li><b>State Transition:</b> If this is the last module, triggers {@code handleCourseCompletion()}.</li>
+     * </ul>
+     * </p>
+     */
     @Override
     @Transactional
     public void completeModule(String userEmail, UUID trainingId, UUID moduleId) {
@@ -142,6 +153,18 @@ public class TrainingProgressServiceImpl implements TrainingProgressService {
         auditLogService.logEvent(status.getUser().getId(), "MODULE_COMPLETED", "Completed module (Video/PDF).");
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * <b>Implementation Note:</b>
+     * <ul>
+     * <li><b>Scoring:</b> Calculates the percentage of correct answers.</li>
+     * <li><b>Pass/Fail:</b> Compares score to {@code training.passingThreshold}.
+     * If >= threshold, advances progress. If < threshold, sets status to {@link ProgressStatus#FAILED}.</li>
+     * <li><b>Completion:</b> If the quiz is passed, and it was the last module, this triggers certificate generation and clearance update.</li>
+     * </ul>
+     * </p>
+     */
     @Override
     @Transactional
     public boolean submitQuiz(String userEmail, UUID trainingId, UUID moduleId, QuizSubmissionDto submission) {
@@ -156,35 +179,7 @@ public class TrainingProgressServiceImpl implements TrainingProgressService {
             }
         }
 
-        if (status.getCurrentModule() == null) {
-            throw new IllegalArgumentException("Training already completed or no active module.");
-        }
-
-        if (!status.getCurrentModule().getId().equals(moduleId)) {
-            throw new IllegalArgumentException("Attempt to solve quiz from another module.");
-        }
-
-        TrainingModule currentModule = status.getCurrentModule();
-        if (currentModule.getType() != ModuleType.QUIZ) {
-            throw new IllegalArgumentException("Invalid module type.");
-        }
-
-        List<QuizQuestion> questions = currentModule.getQuestions();
-        Map<UUID, Integer> userAnswers = submission.getAnswers();
-
-        if (userAnswers == null || userAnswers.size() != questions.size()) {
-            throw new IllegalArgumentException("Number of answers does not match number of questions.");
-        }
-
-        int correctCount = 0;
-        for (QuizQuestion question : questions) {
-            Integer givenAnswerIndex = userAnswers.get(question.getId());
-            if (givenAnswerIndex == null)
-                throw new IllegalArgumentException("Missing answer for Q: " + question.getId());
-            if (givenAnswerIndex == question.getCorrectOptionIndex()) correctCount++;
-        }
-
-        double score = (double) correctCount / questions.size();
+        double score = getScore(moduleId, submission, status);
         status.setQuizScore(score);
 
         double requiredThreshold = training.getPassingThreshold() != null ? training.getPassingThreshold() : defaultPassingThreshold;
@@ -204,6 +199,16 @@ public class TrainingProgressServiceImpl implements TrainingProgressService {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * <b>Implementation Note:</b>
+     * <ul>
+     * <li><b>Side Effect:</b> Calls {@link UserClearanceService#recalculateUserClearance} because revoking a training might drop the user's security level.</li>
+     * <li><b>Notification:</b> Publishes a {@link UserStatusChangedEvent} to notify the user via email.</li>
+     * </ul>
+     * </p>
+     */
     @Override
     @Transactional
     public void revokeTrainingCompletion(UUID userId, UUID trainingId) {
@@ -224,7 +229,7 @@ public class TrainingProgressServiceImpl implements TrainingProgressService {
         status.setCurrentModule(firstModule);
 
         userTrainingStatusRepository.save(status);
-        clearanceService.recalculateUserClearance(userId); // Delegacja do UserClearanceService
+        clearanceService.recalculateUserClearance(userId);
 
         eventPublisher.publishEvent(new UserStatusChangedEvent(this, status.getUser(),
                 "Admin manually revoked completion: " + status.getTraining().getTitle()));
@@ -232,6 +237,14 @@ public class TrainingProgressServiceImpl implements TrainingProgressService {
         auditLogService.logEvent(userId, "TRAINING_COMPLETION_REVOKED", "Admin revoked completion ID: " + trainingId);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * <b>Implementation Note:</b>
+     * Forces all completed users back to {@code IN_PROGRESS} at the start of the training.
+     * This is used when content changes are critical. Triggers security clearance recalculation.
+     * </p>
+     */
     @Override
     @Transactional
     public void resetProgressForTraining(Training training) {
@@ -263,6 +276,14 @@ public class TrainingProgressServiceImpl implements TrainingProgressService {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * <b>Implementation Note:</b>
+     * Only resets users who have already passed the specific module
+     * being updated (or are past it). Users who haven't reached this module yet are unaffected.
+     * </p>
+     */
     @Override
     @Transactional
     public void resetProgressForModule(TrainingModule module) {
@@ -374,8 +395,7 @@ public class TrainingProgressServiceImpl implements TrainingProgressService {
         if (status.getStatus() == ProgressStatus.COMPLETED) {
             try {
                 clearanceService.recalculateUserClearance(status.getUser().getId());
-                List<UserTrainingDto> validTrainings = fetchValidTrainingsInternal(status.getUser().getId());
-                passService.sendPassCompletionNotification(status.getUser(), validTrainings);
+                passService.sendPassCompletionNotification(status.getUser());
             } catch (Exception e) {
                 auditLogService.logEvent(status.getUser().getId(), "PASS_AUTO_SEND_FAILED", "Error: " + e.getMessage());
             }
@@ -423,5 +443,41 @@ public class TrainingProgressServiceImpl implements TrainingProgressService {
                 .passingThreshold(entity.getPassingThreshold())
                 .securityLevel(entity.getSecurityLevel())
                 .build();
+    }
+
+    private double getScore(UUID moduleId, QuizSubmissionDto submission, UserTrainingStatus status) {
+        List<QuizQuestion> questions = getQuizQuestions(moduleId, status);
+        Map<UUID, Integer> userAnswers = submission.getAnswers();
+
+        if (userAnswers == null || userAnswers.size() != questions.size()) {
+            throw new IllegalArgumentException("Number of answers does not match number of questions.");
+        }
+
+        int correctCount = 0;
+        for (QuizQuestion question : questions) {
+            Integer givenAnswerIndex = userAnswers.get(question.getId());
+            if (givenAnswerIndex == null)
+                throw new IllegalArgumentException("Missing answer for Q: " + question.getId());
+            if (givenAnswerIndex == question.getCorrectOptionIndex()) correctCount++;
+        }
+
+        return (double) correctCount / questions.size();
+    }
+
+    private List<QuizQuestion> getQuizQuestions(UUID moduleId, UserTrainingStatus status) {
+        if (status.getCurrentModule() == null) {
+            throw new IllegalArgumentException("Training already completed or no active module.");
+        }
+
+        if (!status.getCurrentModule().getId().equals(moduleId)) {
+            throw new IllegalArgumentException("Attempt to solve quiz from another module.");
+        }
+
+        TrainingModule currentModule = status.getCurrentModule();
+        if (currentModule.getType() != ModuleType.QUIZ) {
+            throw new IllegalArgumentException("Invalid module type.");
+        }
+
+        return currentModule.getQuestions();
     }
 }
