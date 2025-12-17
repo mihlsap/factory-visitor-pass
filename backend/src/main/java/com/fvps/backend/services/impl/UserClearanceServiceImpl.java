@@ -28,6 +28,28 @@ public class UserClearanceServiceImpl implements UserClearanceService {
     private final AuditLogService auditLogService;
     private final Clock clock;
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * <b>Implementation Note (The "Ladder" Algorithm):</b>
+     * <ul>
+     * <li><b>Sequential Progression:</b> The logic checks levels 1 through 4 sequentially.
+     * If a user satisfies Level 1 but fails requirements for Level 2, the loop breaks immediately.
+     * This implies a user cannot hold Level 3 access without also satisfying Level 2.</li>
+     * <li><b>Validation Criteria:</b> A training counts as "satisfied" only if:
+     * <ol>
+     * <li>Status is {@link ProgressStatus#COMPLETED}.</li>
+     * <li>It is not expired ({@code validUntil > now}).</li>
+     * <li>It has not been manually revoked ({@code isPassRevoked == false}).</li>
+     * </ol>
+     * </li>
+     * <li><b>Empty Levels:</b> If a specific security level has no assigned trainings in the system,
+     * it is considered "automatically passed" (pass-through).</li>
+     * <li><b>Optimisation:</b> Database update and audit log occur only if the calculated level
+     * is different from the current one.</li>
+     * </ul>
+     * </p>
+     */
     @Override
     @Transactional
     public void recalculateUserClearance(UUID userId) {
@@ -36,11 +58,13 @@ public class UserClearanceServiceImpl implements UserClearanceService {
 
         int newClearance = 0;
 
+        // Fetch all user statuses at once to avoid N+1 queries inside the loop
         List<UserTrainingStatus> userStatuses = userTrainingStatusRepository.findByUserId(userId);
 
         for (int level = 1; level <= 4; level++) {
             List<Training> requiredTrainings = trainingRepository.findAllBySecurityLevel(level);
 
+            // Edge case: No trainings defined for this level -> Auto Pass
             if (requiredTrainings.isEmpty()) {
                 newClearance = level;
                 continue;
@@ -64,6 +88,7 @@ public class UserClearanceServiceImpl implements UserClearanceService {
             if (levelPassed) {
                 newClearance = level;
             } else {
+                // Break the ladder: if you fail Level X, you cannot achieve Level X+1
                 break;
             }
         }
