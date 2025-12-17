@@ -209,7 +209,7 @@ public class AdminController {
             @Parameter(description = "Target Security Level (1-4)") @PathVariable int level
     ) {
         trainingProgressService.assignTrainingsByLevelToUser(userId, level);
-        return ResponseEntity.ok("Successfully assigned all missing trainings for level " + level);
+        return ResponseEntity.ok(AppMessage.TRAININGS_ASSIGNED_BULK.name());
     }
 
     @Operation(summary = "Revoke Completion", description = "Invalidates the completion of a specific training for a user (forces retake).")
