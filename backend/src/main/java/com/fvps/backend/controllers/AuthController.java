@@ -93,4 +93,16 @@ public class AuthController {
         authService.logout();
         return ResponseEntity.ok(AppMessage.LOGOUT_SUCCESS.name());
     }
+
+    @Operation(summary = "Get Auth Configuration", description = "Returns public configuration like company domain.")
+    @GetMapping("/config")
+    public ResponseEntity<AuthConfigResponse> getAuthConfig() {
+        return ResponseEntity.ok(authService.getAuthConfig());
+    }
+
+    @Operation(summary = "Check email availability", description = "Checks if a user with the given email already exists.")
+    @GetMapping("/check-email")
+    public ResponseEntity<Boolean> checkEmail(@RequestParam String email) {
+        return ResponseEntity.ok(authService.isEmailTaken(email));
+    }
 }
