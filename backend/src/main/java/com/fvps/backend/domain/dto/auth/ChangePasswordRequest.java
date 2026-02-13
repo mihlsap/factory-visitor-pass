@@ -12,7 +12,11 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ChangePasswordRequest {
 
-    @Schema(description = "Current password (for verification)", example = "OldPass1!", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(
+            description = "Current password (for verification)",
+            example = "OldPass1!",
+            requiredMode = Schema.RequiredMode.REQUIRED
+    )
     @NotBlank(message = "Current password is required")
     private String currentPassword;
 
