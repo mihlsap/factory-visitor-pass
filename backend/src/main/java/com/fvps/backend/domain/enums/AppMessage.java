@@ -4,8 +4,10 @@ package com.fvps.backend.domain.enums;
  * Registry of standardised application response codes.
  * <p>
  * These constants serve as stable identifiers for business events and outcomes.
- * The frontend application uses these codes to resolve localised, user-friendly messages (i18n).
- * For example, {@code ACCESS_DENIED_BLOCKED} might be translated to "Konto zablokowane" (PL)
+ * The frontend application uses these codes to resolve localised, user-friendly
+ * messages (i18n).
+ * For example, {@code ACCESS_DENIED_BLOCKED} might be translated to "Konto
+ * zablokowane" (PL)
  * or "Account Blocked" (EN).
  * </p>
  */
@@ -14,30 +16,34 @@ public enum AppMessage {
     // --- Verification & Access Control ---
 
     /**
-     * User meets all security requirements (status active, training valid, clearance sufficient).
+     * User meets all security requirements (status active, training valid,
+     * clearance sufficient).
      */
     ACCESS_GRANTED,
 
     /**
-     * Access denied because the user's account status is {@code BLOCKED} or {@code DELETED}.
+     * Access denied because the user's account status is {@code BLOCKED} or
+     * {@code DELETED}.
      */
     ACCESS_DENIED_BLOCKED,
 
     /**
-     * Access denied because the user has not completed the required training for this zone.
+     * Access denied because the user has not completed the required training for
+     * this zone.
      */
     ACCESS_DENIED_NO_TRAINING,
 
     /**
-     * Access denied because the QR code corresponds to a user UUID that does not exist in the database.
+     * Access denied because the QR code corresponds to a user UUID that does not
+     * exist in the database.
      */
     ACCESS_DENIED_USER_NOT_FOUND,
 
     /**
-     * Access denied because the user's clearance level is lower than the zone's requirement.
+     * Access denied because the user's clearance level is lower than the zone's
+     * requirement.
      */
     ACCESS_DENIED_LOW_LEVEL,
-
 
     // --- Authentication ---
 
@@ -71,7 +77,6 @@ public enum AppMessage {
      */
     LOGOUT_SUCCESS,
 
-
     // --- User Profile ---
 
     /**
@@ -83,7 +88,6 @@ public enum AppMessage {
      * Redundant alias for PASSWORD_CHANGE_SUCCESS (consider deprecating one).
      */
     PASSWORD_CHANGED,
-
 
     // --- Training Progress ---
 
@@ -101,7 +105,6 @@ public enum AppMessage {
      * User failed to achieve the required score.
      */
     QUIZ_FAILED,
-
 
     // --- Administrative Actions ---
 
@@ -141,6 +144,11 @@ public enum AppMessage {
     USER_DELETED,
 
     /**
+     * User role has been modified by an administrator.
+     */
+    USER_ROLE_CHANGED,
+
+    /**
      * Visitor pass PDF was generated and sent/downloaded.
      */
     PASS_SENT,
@@ -153,5 +161,52 @@ public enum AppMessage {
     /**
      * A user's training completion was manually revoked by an admin.
      */
-    TRAINING_REVOKED
+    TRAINING_REVOKED,
+
+    // --- Extended Audit Events (Consistency Refactor) ---
+
+    // Authentication & Access
+    LOGIN_FAILED,
+    LOGIN_BLOCKED,
+    LOGIN_LOCKED,
+    ACCOUNT_LOCKED,
+    LOGIN_2FA_INIT,
+    LOGIN_2FA_FAILED,
+    LOGIN_FAILED_UNKNOWN,
+    LOCKOUT_EXPIRED,
+
+    // Password Management
+    PASSWORD_CHANGE_FAILED,
+    PASSWORD_RESET_FAILED,
+    PASSWORD_RESET_ATTEMPT_UNKNOWN,
+    PASSWORD_RESET_INIT,
+
+    // Pass Handling
+    PASS_DOWNLOADED,
+    PASS_AUTO_SEND_FAILED,
+    COMPLETION_NOTIFICATION_SENT,
+
+    // Content Management (Granular)
+    MODULE_ADDED,
+    MODULE_UPDATED,
+    MODULE_DELETED,
+    QUESTION_ADDED,
+    QUESTION_UPDATED,
+    QUESTION_DELETED,
+
+    // User & Training Management
+    CLEARANCE_CHANGED, // Replaces CLEARANCE_UPDATED for consistency
+    TRAINING_UNASSIGNED,
+    TRAINING_PROGRESS_RESET,
+    BULK_ASSIGNMENT_SKIPPED,
+    TRAINING_VALIDITY_RECALCULATED,
+
+    // System / Notifications
+    EMAIL_SENT,
+    EMAIL_SENDING_FAILED,
+    FILE_CLEANUP_WARNING,
+    FILE_DELETE_ERROR,
+
+    // Legacy / Aliases (to be standardized)
+    USER_STATUS_CHANGE
 }
