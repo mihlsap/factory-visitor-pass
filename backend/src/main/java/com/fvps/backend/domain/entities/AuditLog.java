@@ -46,7 +46,7 @@ public class AuditLog {
     /**
      * The identifier (usually email) of the user or system *performing* the action.
      * <p>
-     * E.g., "admin@fvps.com" or "system-scheduler".
+     * E.g. "admin@fvps.com" or "system-scheduler".
      * </p>
      */
     @Column(name = "actor")
@@ -64,10 +64,11 @@ public class AuditLog {
     /**
      * Detailed description or payload associated with the event.
      * <p>
-     * Could contain textual descriptions or JSON-like data (e.g., "Changed status from ACTIVE to BLOCKED").
+     * Could contain textual descriptions or JSON-like data (e.g. "Changed status from ACTIVE to BLOCKED").
      * </p>
+     * It has maximum length of 8192 characters.
      */
-    @Column(nullable = false)
+    @Column(nullable = false, length = 8192)
     private String details;
 
     /**
@@ -106,7 +107,7 @@ public class AuditLog {
     /**
      * Returns the hash code based on the effective class.
      * <p>
-     * Consistent with the {@code equals} implementation for JPA entities to ensure consistent behavior
+     * Consistent with the {@code equals} implementation for JPA entities to ensure consistent behaviour
      * across Hibernate states (transient, managed, detached).
      * </p>
      *
