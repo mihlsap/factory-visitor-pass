@@ -2,6 +2,7 @@ package com.fvps.backend.security;
 
 import com.fvps.backend.domain.entities.User;
 import com.fvps.backend.domain.enums.UserStatus;
+import jakarta.annotation.Nonnull;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -41,7 +42,7 @@ public record CustomUserDetails(User user) implements UserDetails {
      * @return a collection containing the user's role.
      */
     @Override
-    @jakarta.annotation.Nonnull
+    @Nonnull
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
     }
@@ -52,7 +53,7 @@ public record CustomUserDetails(User user) implements UserDetails {
      * @return the bcrypt-hashed password from the database.
      */
     @Override
-    @jakarta.annotation.Nonnull
+    @Nonnull
     public String getPassword() {
         return user.getPassword();
     }
@@ -66,7 +67,7 @@ public record CustomUserDetails(User user) implements UserDetails {
      * @return the user's email.
      */
     @Override
-    @jakarta.annotation.Nonnull
+    @Nonnull
     public String getUsername() {
         return user.getEmail();
     }
