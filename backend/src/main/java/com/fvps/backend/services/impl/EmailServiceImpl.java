@@ -3,6 +3,7 @@ package com.fvps.backend.services.impl;
 import com.fvps.backend.services.AuditLogService;
 import com.fvps.backend.services.EmailService;
 import lombok.RequiredArgsConstructor;
+import com.fvps.backend.domain.enums.AppMessage;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -24,11 +25,15 @@ public class EmailServiceImpl implements EmailService {
      * <p>
      * <b>Implementation Note:</b>
      * <ul>
-     * <li><b>Asynchronous Execution:</b> Annotated with {@link Async}. The email sending process happens
-     * in a separate thread to avoid blocking the user's HTTP request (reduces UI latency).</li>
-     * <li><b>Audit Logging:</b> Automatically records an "EMAIL_SENT" event upon success or
+     * <li><b>Asynchronous Execution:</b> Annotated with {@link Async}. The email
+     * sending process happens
+     * in a separate thread to avoid blocking the user's HTTP request (reduces UI
+     * latency).</li>
+     * <li><b>Audit Logging:</b> Automatically records an "EMAIL_SENT" event upon
+     * success or
      * "EMAIL_SENDING_FAILED" if an exception occurs during the SMTP handshake.</li>
-     * <li><b>Error Handling:</b> Since this runs asynchronously, thrown exceptions are not propagated
+     * <li><b>Error Handling:</b> Since this runs asynchronously, thrown exceptions
+     * are not propagated
      * to the caller immediately but are handled by the audit logger.</li>
      * </ul>
      * </p>
@@ -44,9 +49,9 @@ public class EmailServiceImpl implements EmailService {
             message.setText(content);
 
             mailSender.send(message);
-            auditLogService.logEvent("EMAIL_SENT", "Email sent to " + to);
+            auditLogService.logEvent(AppMessage.EMAIL_SENT.name(), "Email sent to " + to);
         } catch (Exception e) {
-            auditLogService.logEvent("EMAIL_SENDING_FAILED", "Email sending failed to " + to);
+            auditLogService.logEvent(AppMessage.EMAIL_SENDING_FAILED.name(), "Email sending failed to " + to);
             throw new RuntimeException("Failed to send email to " + to, e);
         }
     }
