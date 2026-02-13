@@ -14,7 +14,7 @@ import java.util.Locale;
  * Main application configuration class defining global beans.
  * <p>
  * This class is responsible for configuring fundamental Spring beans used throughout the application,
- * such as time handling (Clock), internationalization (MessageSource), and validation.
+ * such as time handling (Clock), internationalisation (MessageSource), and validation.
  * </p>
  */
 @Configuration
@@ -24,7 +24,7 @@ public class AppConfig {
      * Creates a {@link Clock} bean using the system default time zone.
      * <p>
      * Injecting {@code Clock} instead of using {@code LocalDateTime.now()} directly allows for
-     * easier testing of time-dependent logic (e.g., by mocking a fixed time in unit tests).
+     * easier testing of time-dependent logic (e.g. by mocking a fixed time in unit tests).
      * </p>
      *
      * @return the system default zone clock.
@@ -35,7 +35,7 @@ public class AppConfig {
     }
 
     /**
-     * Configures the {@link MessageSource} for internationalization (i18n).
+     * Configures the {@link MessageSource} for internationalisation (i18n).
      * <p>
      * It loads messages from the {@code classpath:messages} file (e.g., {@code messages.properties}).
      * The default encoding is set to UTF-8 to support special characters.
