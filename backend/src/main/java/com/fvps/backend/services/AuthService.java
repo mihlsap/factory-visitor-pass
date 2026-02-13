@@ -1,9 +1,6 @@
 package com.fvps.backend.services;
 
-import com.fvps.backend.domain.dto.auth.AuthResponse;
-import com.fvps.backend.domain.dto.auth.LoginRequest;
-import com.fvps.backend.domain.dto.auth.RegisterRequest;
-import com.fvps.backend.domain.dto.auth.TwoFactorRequest;
+import com.fvps.backend.domain.dto.auth.*;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -84,4 +81,12 @@ public interface AuthService {
      * </p>
      */
     void logout();
+
+    /**
+     * Retrieves public authentication configuration for the frontend.
+     * @return configuration details including company domain.
+     */
+    AuthConfigResponse getAuthConfig();
+
+    boolean isEmailTaken(String email);
 }

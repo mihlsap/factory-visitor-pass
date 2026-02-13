@@ -1,9 +1,6 @@
 package com.fvps.backend.services.impl;
 
-import com.fvps.backend.domain.dto.auth.AuthResponse;
-import com.fvps.backend.domain.dto.auth.LoginRequest;
-import com.fvps.backend.domain.dto.auth.RegisterRequest;
-import com.fvps.backend.domain.dto.auth.TwoFactorRequest;
+import com.fvps.backend.domain.dto.auth.*;
 import com.fvps.backend.domain.entities.User;
 import com.fvps.backend.domain.enums.UserRole;
 import com.fvps.backend.domain.enums.UserStatus;
@@ -11,6 +8,7 @@ import com.fvps.backend.repositories.UserRepository;
 import com.fvps.backend.security.CustomUserDetails;
 import com.fvps.backend.security.JwtService;
 import com.fvps.backend.services.*;
+import com.fvps.backend.domain.enums.AppMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -72,9 +70,12 @@ public class AuthServiceImpl implements AuthService {
      * <p>
      * <b>Implementation Note:</b>
      * <ul>
-     * <li><b>Role Assignment:</b> Checks the email domain. If it matches {@code app.company.domain},
-     * the user is automatically assigned {@link UserRole#EMPLOYEE}. Otherwise, they are assigned {@link UserRole#GUEST}.</li>
-     * <li><b>Company Name:</b> Guests must provide a company name; otherwise, a default guest company is assigned.</li>
+     * <li><b>Role Assignment:</b> Checks the email domain. If it matches
+     * {@code app.company.domain},
+     * the user is automatically assigned {@link UserRole#EMPLOYEE}. Otherwise, they
+     * are assigned {@link UserRole#GUEST}.</li>
+     * <li><b>Company Name:</b> Guests must provide a company name; otherwise, a
+     * default guest company is assigned.</li>
      * </ul>
      * </p>
      */
@@ -112,7 +113,7 @@ public class AuthServiceImpl implements AuthService {
 
         userRepository.save(user);
 
-        auditLogService.logEvent(user.getId(), "REGISTER",
+        auditLogService.logEvent(user.getId(), AppMessage.REGISTER_SUCCESS.name(),
                 "New user registered (" + assignedRole + "): " + user.getEmail());
 
         var jwtToken = jwtService.generateToken(new CustomUserDetails(user));
@@ -127,9 +128,12 @@ public class AuthServiceImpl implements AuthService {
      * <p>
      * <b>Implementation Note:</b>
      * <ul>
-     * <li><b>Brute-force Protection:</b> Checks if the account is temporarily locked via {@code userService.registerFailedLogin}.</li>
-     * <li><b>Access Control:</b> explicitly rejects users with {@link UserStatus#BLOCKED}.</li>
-     * <li><b>2FA Logic:</b> Upon successful password validation, generates a random 6-digit code, saves it to the DB, and emails it.</li>
+     * <li><b>Brute-force Protection:</b> Checks if the account is temporarily
+     * locked via {@code userService.registerFailedLogin}.</li>
+     * <li><b>Access Control:</b> explicitly rejects users with
+     * {@link UserStatus#BLOCKED}.</li>
+     * <li><b>2FA Logic:</b> Upon successful password validation, generates a random
+     * 6-digit code, saves it to the DB, and emails it.</li>
      * </ul>
      * </p>
      */
@@ -140,38 +144,40 @@ public class AuthServiceImpl implements AuthService {
 
         if (user != null) {
             if (user.getStatus() == UserStatus.BLOCKED) {
-                auditLogService.logEvent(user.getId(), "LOGIN_BLOCKED", "Login attempt on banned account.");
+                auditLogService.logEvent(user.getId(), AppMessage.LOGIN_BLOCKED.name(),
+                        "Login attempt on banned account.");
                 throw new RuntimeException("Account has been blocked by administrator.");
             }
 
             if (user.getLockoutTime() != null) {
                 if (user.getLockoutTime().isAfter(LocalDateTime.now(clock))) {
-                    auditLogService.logEvent(user.getId(), "LOGIN_LOCKED", "Login attempt on locked account.");
-                    long minutesLeft = java.time.Duration.between(LocalDateTime.now(clock), user.getLockoutTime()).toMinutes() + 1;
-                    throw new RuntimeException("Account is temporarily locked due to too many failed attempts. Try again in " + minutesLeft + " minutes.");
+                    auditLogService.logEvent(user.getId(), AppMessage.LOGIN_LOCKED.name(),
+                            "Login attempt on locked account.");
+                    long minutesLeft = java.time.Duration.between(LocalDateTime.now(clock), user.getLockoutTime())
+                            .toMinutes() + 1;
+                    throw new RuntimeException(
+                            "Account is temporarily locked due to too many failed attempts. Try again in " + minutesLeft
+                                    + " minutes.");
                 } else {
                     userService.resetLockoutStats(user.getId());
-                    user = userRepository.findById(user.getId()).orElseThrow(() -> new RuntimeException("Unknown user"));
+                    user = userRepository.findById(user.getId())
+                            .orElseThrow(() -> new RuntimeException("Unknown user"));
                 }
             }
         } else {
-            // Anti-enumeration: Generic message, but logic proceeds to allow timing consistency if possible
-            throw  new RuntimeException("Unknown user");
+            // Anti-enumeration: Generic message, but logic proceeds to allow timing
+            // consistency if possible
+            throw new RuntimeException("Unknown user");
         }
 
         try {
             authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-            );
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
         } catch (AuthenticationException e) {
-            if (user != null) {
-                try {
-                    userService.registerFailedLogin(user.getId());
-                } catch (Exception ex) {
-                    log.error("Failed to increment failed login attempts for user: {}", user.getId(), ex);
-                }
-            } else {
-                auditLogService.logEvent("LOGIN_FAILED_UNKNOWN", "Failed login attempt for unknown email: " + request.getEmail());
+            try {
+                userService.registerFailedLogin(user.getId());
+            } catch (Exception ex) {
+                log.error("Failed to increment failed login attempts for user: {}", user.getId(), ex);
             }
             throw new RuntimeException("Invalid email or password.");
         }
@@ -190,12 +196,12 @@ public class AuthServiceImpl implements AuthService {
 
         String subject = messageSource.getMessage("email.auth.2fa.subject", null, defaultLocale);
 
-        Object[] args = {code, twoFactorValidityMinutes};
+        Object[] args = { code, twoFactorValidityMinutes };
         String content = messageSource.getMessage("email.auth.2fa.body", args, defaultLocale);
 
         emailService.sendEmail(user.getEmail(), subject, content);
 
-        auditLogService.logEvent(user.getId(), "LOGIN_2FA_INIT", "Password correct. 2FA code sent.");
+        auditLogService.logEvent(user.getId(), AppMessage.LOGIN_2FA_INIT.name(), "Password correct. 2FA code sent.");
 
         return AuthResponse.builder()
                 .token(null) // No token yet
@@ -207,8 +213,10 @@ public class AuthServiceImpl implements AuthService {
     /**
      * {@inheritDoc}
      * <p>
-     * <b>Implementation Note:</b> This is the final step where the JWT is actually signed and returned.
-     * It validates the code against the database and updates {@code lastLogin} timestamp.
+     * <b>Implementation Note:</b> This is the final step where the JWT is actually
+     * signed and returned.
+     * It validates the code against the database and updates {@code lastLogin}
+     * timestamp.
      * </p>
      */
     @Override
@@ -218,7 +226,7 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() -> new RuntimeException("Unknown user"));
 
         if (user.getTwoFactorCode() == null || !user.getTwoFactorCode().equals(request.getCode())) {
-            auditLogService.logEvent(user.getId(), "LOGIN_2FA_FAILED", "Invalid 2FA code.");
+            auditLogService.logEvent(user.getId(), AppMessage.LOGIN_2FA_FAILED.name(), "Invalid 2FA code.");
             throw new RuntimeException("Invalid verification code.");
         }
 
@@ -231,7 +239,7 @@ public class AuthServiceImpl implements AuthService {
         user.setLastLogin(LocalDateTime.now(clock));
         userRepository.save(user);
 
-        auditLogService.logEvent(user.getId(), "LOGIN_SUCCESS", "Logged in (2FA confirmed).");
+        auditLogService.logEvent(user.getId(), AppMessage.LOGIN_SUCCESS.name(), "Logged in (2FA confirmed).");
         var jwtToken = jwtService.generateToken(new CustomUserDetails(user));
         return AuthResponse.builder()
                 .token(jwtToken)
@@ -244,8 +252,10 @@ public class AuthServiceImpl implements AuthService {
      * {@inheritDoc}
      * <p>
      * <b>Implementation Note (Security):</b>
-     * Includes <b>Timing Attack Protection</b>. If the email is unknown, the system performs a dummy
-     * hashing operation to simulate workload, preventing attackers from enumerating valid emails
+     * Includes <b>Timing Attack Protection</b>. If the email is unknown, the system
+     * performs a dummy
+     * hashing operation to simulate workload, preventing attackers from enumerating
+     * valid emails
      * based on response time.
      * </p>
      */
@@ -255,7 +265,8 @@ public class AuthServiceImpl implements AuthService {
         var userOptional = userRepository.findByEmail(email);
 
         if (userOptional.isEmpty()) {
-            auditLogService.logEvent("PASSWORD_RESET_ATTEMPT_UNKNOWN", "Password reset attempt for unknown email: " + email);
+            auditLogService.logEvent(AppMessage.PASSWORD_RESET_ATTEMPT_UNKNOWN.name(),
+                    "Password reset attempt for unknown email: " + email);
             // Simulate processing time to prevent user enumeration
             String dummyToken = UUID.randomUUID().toString();
             passwordEncoder.encode(dummyToken);
@@ -273,12 +284,12 @@ public class AuthServiceImpl implements AuthService {
 
         String subject = messageSource.getMessage("email.auth.reset.subject", null, defaultLocale);
 
-        Object[] args = {link};
+        Object[] args = { link };
         String content = messageSource.getMessage("email.auth.reset.body", args, defaultLocale);
 
         emailService.sendEmail(user.getEmail(), subject, content);
 
-        auditLogService.logEvent(user.getId(), "PASSWORD_RESET_INIT", "Secure reset link sent.");
+        auditLogService.logEvent(user.getId(), AppMessage.PASSWORD_RESET_INIT.name(), "Secure reset link sent.");
     }
 
     @Override
@@ -292,7 +303,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         if (!passwordEncoder.matches(rawToken, user.getResetToken())) {
-            auditLogService.logEvent(user.getId(), "PASSWORD_RESET_FAILED", "Invalid token used.");
+            auditLogService.logEvent(user.getId(), AppMessage.PASSWORD_RESET_FAILED.name(), "Invalid token used.");
             throw new RuntimeException("Invalid token.");
         }
 
@@ -301,7 +312,7 @@ public class AuthServiceImpl implements AuthService {
         user.setResetTokenExpiry(null);
         userRepository.save(user);
 
-        auditLogService.logEvent(user.getId(), "PASSWORD_RESET_COMPLETE", "Password has been changed.");
+        auditLogService.logEvent(user.getId(), AppMessage.PASSWORD_RESET_COMPLETE.name(), "Password has been changed.");
     }
 
     @Override
@@ -310,13 +321,26 @@ public class AuthServiceImpl implements AuthService {
             var auth = SecurityContextHolder.getContext().getAuthentication();
             if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
                 String email = auth.getName();
-                userRepository.findByEmail(email).ifPresent(user ->
-                        auditLogService.logEvent(user.getId(), "LOGOUT", "User logged out manually.")
-                );
+                userRepository.findByEmail(email).ifPresent(
+                        user -> auditLogService.logEvent(user.getId(), AppMessage.LOGOUT_SUCCESS.name(),
+                                "User logged out manually."));
             }
         } catch (Exception e) {
             log.error("Error during logout logging", e);
         }
         SecurityContextHolder.clearContext();
+    }
+
+    @Override
+    public AuthConfigResponse getAuthConfig() {
+        return AuthConfigResponse.builder()
+                .companyDomain(companyDomain)
+                .companyName(defaultCompanyName)
+                .build();
+    }
+
+    @Override
+    public boolean isEmailTaken(String email) {
+        return userRepository.findByEmail(email).isPresent();
     }
 }
