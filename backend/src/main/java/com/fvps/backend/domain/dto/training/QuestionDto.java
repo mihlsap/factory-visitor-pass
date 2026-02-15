@@ -1,5 +1,6 @@
 package com.fvps.backend.domain.dto.training;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
@@ -20,8 +21,9 @@ public class QuestionDto {
     @Schema(description = "List of options", example = "[\"999\", \"112\", \"911\"]")
     private List<String> options;
 
-    @Schema(description = "Index of correct answer (hidden in some contexts)", example = "1")
-    private int correctOptionIndex;
+    @Schema(description = "Index of correct answer (hidden for users)", example = "1")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Integer correctOptionIndex;
 
     @Schema(description = "Version", example = "1")
     private Long version;
