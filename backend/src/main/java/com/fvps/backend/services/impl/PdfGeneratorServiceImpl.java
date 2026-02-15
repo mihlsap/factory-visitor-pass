@@ -45,11 +45,16 @@ public class PdfGeneratorServiceImpl implements PdfGeneratorService {
      * <p>
      * <b>Implementation Note:</b>
      * <ul>
-     * <li><b>Libraries:</b> Uses <i>OpenPDF</i> ({@code com.lowagie}) for layout and <i>ZXing</i> for QR code generation.</li>
-     * <li><b>Visual Logic:</b> Security levels are colour-coded (Level 1=Green to Level 4=Red) for quick visual identification by security guards.</li>
-     * <li><b>Resilience:</b> If the user's photo or the QR code fails to generate/load, the method catches the exception
-     * locally and renders a placeholder text (e.g. "[NO PHOTO]") instead of failing the entire document generation.</li>
-     * <li><b>QR Content:</b> The QR code embeds the User's UUID. Security personnel scan this to verify the *current*
+     * <li><b>Libraries:</b> Uses <i>OpenPDF</i> ({@code com.lowagie}) for layout
+     * and <i>ZXing</i> for QR code generation.</li>
+     * <li><b>Visual Logic:</b> Security levels are colour-coded (Level 1=Green to
+     * Level 4=Red) for quick visual identification by security guards.</li>
+     * <li><b>Resilience:</b> If the user's photo or the QR code fails to
+     * generate/load, the method catches the exception
+     * locally and renders a placeholder text (e.g. "[NO PHOTO]") instead of failing
+     * the entire document generation.</li>
+     * <li><b>QR Content:</b> The QR code embeds the User's UUID. Security personnel
+     * scan this to verify the *current*
      * status in the system, preventing use of revoked (printed) passes.</li>
      * </ul>
      * </p>
@@ -70,7 +75,7 @@ public class PdfGeneratorServiceImpl implements PdfGeneratorService {
 
             PdfPTable headerTable = new PdfPTable(2);
             headerTable.setWidthPercentage(100);
-            headerTable.setWidths(new float[]{1, 2});
+            headerTable.setWidths(new float[] { 1, 2 });
 
             PdfPCell photoCell = new PdfPCell();
             photoCell.setBorder(Rectangle.NO_BORDER);
@@ -81,11 +86,13 @@ public class PdfGeneratorServiceImpl implements PdfGeneratorService {
                     userImage.scaleToFit(120, 150);
                     photoCell.addElement(userImage);
                 } else {
-                    String noPhotoText = messageSource.getMessage("pdf.pass.no_photo", null, "[NO PHOTO]", defaultLocale);
+                    String noPhotoText = messageSource.getMessage("pdf.pass.no_photo", null, "[NO PHOTO]",
+                            defaultLocale);
                     photoCell.addElement(new Paragraph(noPhotoText));
                 }
             } catch (Exception e) {
-                String photoErrorText = messageSource.getMessage("pdf.pass.photo_error", null, "[PHOTO ERROR]", defaultLocale);
+                String photoErrorText = messageSource.getMessage("pdf.pass.photo_error", null, "[PHOTO ERROR]",
+                        defaultLocale);
                 photoCell.addElement(new Paragraph(photoErrorText));
             }
             headerTable.addCell(photoCell);
@@ -97,11 +104,14 @@ public class PdfGeneratorServiceImpl implements PdfGeneratorService {
             String labelCompany = messageSource.getMessage("pdf.pass.label.company", null, "Company:", defaultLocale);
             String labelPhone = messageSource.getMessage("pdf.pass.label.phone", null, "Phone:", defaultLocale);
             String labelEmail = messageSource.getMessage("pdf.pass.label.email", null, "Email:", defaultLocale);
-            String internalEmployee = messageSource.getMessage("pdf.pass.label.internal_employee", null, "Internal Employee", defaultLocale);
+            String internalEmployee = messageSource.getMessage("pdf.pass.label.internal_employee", null,
+                    "Internal Employee", defaultLocale);
 
             infoCell.addElement(new Paragraph(labelName + " " + user.getName() + " " + user.getSurname()));
-            infoCell.addElement(new Paragraph(labelCompany + " " + (user.getCompanyName() != null ? user.getCompanyName() : internalEmployee)));
-            infoCell.addElement(new Paragraph(labelPhone + " " + (user.getPhoneNumber() != null ? user.getPhoneNumber() : "-")));
+            infoCell.addElement(new Paragraph(
+                    labelCompany + " " + (user.getCompanyName() != null ? user.getCompanyName() : internalEmployee)));
+            infoCell.addElement(
+                    new Paragraph(labelPhone + " " + (user.getPhoneNumber() != null ? user.getPhoneNumber() : "-")));
             infoCell.addElement(new Paragraph(labelEmail + " " + user.getEmail()));
 
             Color levelColor = switch (user.getClearanceLevel()) {
@@ -112,12 +122,12 @@ public class PdfGeneratorServiceImpl implements PdfGeneratorService {
                 default -> Color.BLACK;
             };
 
-            String labelClearance = messageSource.getMessage("pdf.pass.label.clearance_level", null, "SECURITY CLEARANCE: LEVEL", defaultLocale);
+            String labelClearance = messageSource.getMessage("pdf.pass.label.clearance_level", null,
+                    "SECURITY CLEARANCE: LEVEL", defaultLocale);
             Font levelFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14, levelColor);
             Paragraph levelPara = new Paragraph(
                     labelClearance + " " + user.getClearanceLevel(),
-                    levelFont
-            );
+                    levelFont);
             infoCell.addElement(levelPara);
 
             try {
@@ -140,8 +150,10 @@ public class PdfGeneratorServiceImpl implements PdfGeneratorService {
             PdfPTable trainingTable = new PdfPTable(2);
             trainingTable.setWidthPercentage(100);
 
-            String colTraining = messageSource.getMessage("pdf.pass.table.training", null, "Training Title", defaultLocale);
-            String colValidUntil = messageSource.getMessage("pdf.pass.table.valid_until", null, "Valid Until", defaultLocale);
+            String colTraining = messageSource.getMessage("pdf.pass.table.training", null, "Training Title",
+                    defaultLocale);
+            String colValidUntil = messageSource.getMessage("pdf.pass.table.valid_until", null, "Valid Until",
+                    defaultLocale);
 
             trainingTable.addCell(new Paragraph(colTraining, tableHeaderFont));
             trainingTable.addCell(new Paragraph(colValidUntil, tableHeaderFont));
@@ -157,23 +169,26 @@ public class PdfGeneratorServiceImpl implements PdfGeneratorService {
 
             document.add(new Paragraph(" "));
 
-            String footerText = messageSource.getMessage("pdf.pass.footer.generated_by", null, "Document generated automatically by FVPS system.", defaultLocale);
+            String footerText = messageSource.getMessage("pdf.pass.footer.generated_by", null,
+                    "Document generated automatically by FVPS system.", defaultLocale);
             Paragraph footer = new Paragraph(footerText, FontFactory.getFont(FontFactory.HELVETICA, 10));
             footer.setAlignment(Element.ALIGN_CENTER);
             document.add(footer);
             document.add(new Paragraph(" "));
 
             Font disclaimerFont = FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 10, Color.GRAY);
-            String disclaimerText = messageSource.getMessage("pdf.pass.footer.disclaimer", null, "Disclaimer: Access rights are verified dynamically via QR Code.", defaultLocale);
+            String disclaimerText = messageSource.getMessage("pdf.pass.footer.disclaimer", null,
+                    "Disclaimer: Access rights are verified dynamically via QR Code.", defaultLocale);
             Paragraph disclaimer = new Paragraph(disclaimerText, disclaimerFont);
             disclaimer.setAlignment(Element.ALIGN_CENTER);
             document.add(disclaimer);
 
-            String generatedOnLabel = messageSource.getMessage("pdf.pass.footer.generated_on", null, "Generated on:", defaultLocale);
+            String generatedOnLabel = messageSource.getMessage("pdf.pass.footer.generated_on", null, "Generated on:",
+                    defaultLocale);
             Paragraph timestamp = new Paragraph(
-                    generatedOnLabel + " " + LocalDateTime.now(clock).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
-                    disclaimerFont
-            );
+                    generatedOnLabel + " "
+                            + LocalDateTime.now(clock).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
+                    disclaimerFont);
             timestamp.setAlignment(Element.ALIGN_CENTER);
             document.add(timestamp);
 
