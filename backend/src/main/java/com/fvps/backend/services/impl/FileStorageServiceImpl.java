@@ -2,6 +2,7 @@ package com.fvps.backend.services.impl;
 
 import com.fvps.backend.services.AuditLogService;
 import com.fvps.backend.services.FileStorageService;
+import com.fvps.backend.domain.enums.AppMessage;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -33,7 +34,8 @@ public class FileStorageServiceImpl implements FileStorageService {
         try {
             Files.createDirectories(this.fileStorageLocation);
         } catch (Exception ex) {
-            throw new RuntimeException("Could not create the directory where the uploaded files will be stored: " + this.fileStorageLocation, ex);
+            throw new RuntimeException("Could not create the directory where the uploaded files will be stored: "
+                    + this.fileStorageLocation, ex);
         }
     }
 
@@ -42,10 +44,13 @@ public class FileStorageServiceImpl implements FileStorageService {
      * <p>
      * <b>Implementation Note:</b>
      * <ul>
-     * <li><b>Security Validation:</b> Performs a strict check to ensure the file is a valid image.
-     * It uses {@link ImageIO#read} to parse the stream; if this fails, the file is rejected even if the extension is correct.
+     * <li><b>Security Validation:</b> Performs a strict check to ensure the file is
+     * a valid image.
+     * It uses {@link ImageIO#read} to parse the stream; if this fails, the file is
+     * rejected even if the extension is correct.
      * This prevents malicious uploads (e.g. executables disguised as images).</li>
-     * <li><b>Sanitisation:</b> The original filename is discarded. A new {@link UUID} is generated
+     * <li><b>Sanitisation:</b> The original filename is discarded. A new
+     * {@link UUID} is generated
      * to prevent filename collisions and path traversal attacks.</li>
      * </ul>
      * </p>
@@ -109,26 +114,31 @@ public class FileStorageServiceImpl implements FileStorageService {
      * {@inheritDoc}
      * <p>
      * <b>Implementation Note:</b>
-     * This method is designed to be "safe" regarding exceptions. If the file deletion fails
-     * (e.g. file locked, permissions error) or the file is missing, it does <b>not</b> throw an exception
+     * This method is designed to be "safe" regarding exceptions. If the file
+     * deletion fails
+     * (e.g. file locked, permissions error) or the file is missing, it does
+     * <b>not</b> throw an exception
      * to the caller. Instead, it logs the failure to the {@link AuditLogService}.
-     * This ensures that auxiliary clean-up tasks do not crash the main business transaction.
+     * This ensures that auxiliary clean-up tasks do not crash the main business
+     * transaction.
      * </p>
      */
     @Override
     public void deletePhoto(String filename) {
-        if (filename == null) return;
+        if (filename == null)
+            return;
 
         try {
             Path filePath = this.fileStorageLocation.resolve(filename).normalize();
             boolean deleted = Files.deleteIfExists(filePath);
 
             if (!deleted) {
-                auditLogService.logEvent("FILE_CLEANUP_WARNING", "File to delete not found: " + filename);
+                auditLogService.logEvent(AppMessage.FILE_CLEANUP_WARNING.name(),
+                        "File to delete not found: " + filename);
             }
 
         } catch (IOException e) {
-            auditLogService.logEvent("FILE_DELETE_ERROR",
+            auditLogService.logEvent(AppMessage.FILE_DELETE_ERROR.name(),
                     "Failed to delete old photo: " + filename + ". Error: " + e.getMessage());
         }
     }
