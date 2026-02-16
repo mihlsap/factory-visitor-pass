@@ -6,15 +6,20 @@ import lombok.*;
 import org.hibernate.proxy.HibernateProxy;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
 /**
  * Represents the progress and status of a specific User in a specific Training.
  * <p>
- * This entity acts as a join table between {@link User} and {@link Training}, but carries
- * additional state information. It tracks whether the user has started the training,
- * which module they are currently on, their quiz score, and the validity period of the completion.
+ * This entity acts as a join table between {@link User} and {@link Training},
+ * but carries
+ * additional state information. It tracks whether the user has started the
+ * training,
+ * which module they are currently on, their quiz score, and the validity period
+ * of the completion.
  * </p>
  */
 @Getter
@@ -51,7 +56,7 @@ public class UserTrainingStatus {
     private Training training;
 
     /**
-     * The current lifecycle status of the training (e.g., IN_PROGRESS, COMPLETED).
+     * The current lifecycle status of the training (e.g. IN_PROGRESS, COMPLETED).
      */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -69,14 +74,6 @@ public class UserTrainingStatus {
     private TrainingModule currentModule;
 
     /**
-     * The score achieved in the final quiz (if applicable).
-     * <p>
-     * Value ranges from 0.0 to 1.0. Null if the quiz hasn't been taken yet.
-     * </p>
-     */
-    private Double quizScore;
-
-    /**
      * Timestamp when the user successfully finished the training.
      */
     private LocalDateTime completedAt;
@@ -84,26 +81,25 @@ public class UserTrainingStatus {
     /**
      * The expiration date of the training validity.
      * <p>
-     * Calculated based on {@code completedAt} + {@link Training#getValidityPeriodDays()}.
+     * Calculated based on {@code completedAt} +
+     * {@link Training#getValidityPeriodDays()}.
      * Used to determine if the user's pass is valid.
      * </p>
      */
     private LocalDateTime validUntil;
 
-    /**
-     * Administrative flag to manually revoke a pass.
-     * <p>
-     * If true, the user is considered not valid for this training even if {@code status} is COMPLETED
-     * and the date is valid. Used for disciplinary actions or safety violations.
-     * </p>
-     */
+    @Column(name = "is_pass_revoked")
     private boolean isPassRevoked;
+
+    @OneToMany(mappedBy = "userTrainingStatus", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    @ToString.Exclude
+    private List<UserQuizAnswer> quizAnswers = new ArrayList<>();
 
     /**
      * Sets default values before persisting a new record.
      * <p>
      * Default status: NOT_STARTED.
-     * Default revoked state: false.
      * </p>
      */
     @PrePersist
@@ -111,7 +107,6 @@ public class UserTrainingStatus {
         if (this.status == null) {
             this.status = ProgressStatus.NOT_STARTED;
         }
-        this.isPassRevoked = false;
     }
 
     /**
@@ -122,11 +117,18 @@ public class UserTrainingStatus {
      */
     @Override
     public final boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null) return false;
-        Class<?> oEffectiveClass = o instanceof HibernateProxy ? ((HibernateProxy) o).getHibernateLazyInitializer().getPersistentClass() : o.getClass();
-        Class<?> thisEffectiveClass = this instanceof HibernateProxy ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass() : this.getClass();
-        if (thisEffectiveClass != oEffectiveClass) return false;
+        if (this == o)
+            return true;
+        if (o == null)
+            return false;
+        Class<?> oEffectiveClass = o instanceof HibernateProxy
+                ? ((HibernateProxy) o).getHibernateLazyInitializer().getPersistentClass()
+                : o.getClass();
+        Class<?> thisEffectiveClass = this instanceof HibernateProxy
+                ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass()
+                : this.getClass();
+        if (thisEffectiveClass != oEffectiveClass)
+            return false;
         UserTrainingStatus that = (UserTrainingStatus) o;
         return getId() != null && Objects.equals(getId(), that.getId());
     }
@@ -136,6 +138,8 @@ public class UserTrainingStatus {
      */
     @Override
     public final int hashCode() {
-        return this instanceof HibernateProxy ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass().hashCode() : getClass().hashCode();
+        return this instanceof HibernateProxy
+                ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass().hashCode()
+                : getClass().hashCode();
     }
 }
