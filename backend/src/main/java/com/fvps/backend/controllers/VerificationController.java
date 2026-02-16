@@ -30,12 +30,9 @@ public class VerificationController {
     })
     @GetMapping("/{userId}")
     public ResponseEntity<VerificationResponse> verifyUser(
-            @Parameter(description = "User UUID (scanned from QR code)", required = true)
-            @PathVariable UUID userId,
+            @Parameter(description = "User UUID (scanned from QR code)", required = true) @PathVariable UUID userId,
 
-            @Parameter(description = "Minimum security clearance level required for this specific checkpoint", example = "1")
-            @RequestParam(defaultValue = "1") int requiredLevel
-    ) {
+            @Parameter(description = "Minimum security clearance level required for this specific checkpoint", example = "1") @RequestParam(defaultValue = "1") int requiredLevel) {
         return ResponseEntity.ok(verificationService.verifyUserAccess(userId, requiredLevel));
     }
 }
