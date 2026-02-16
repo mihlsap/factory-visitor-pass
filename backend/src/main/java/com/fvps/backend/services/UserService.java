@@ -5,6 +5,7 @@ import com.fvps.backend.domain.dto.user.UpdateUserRequest;
 import com.fvps.backend.domain.dto.user.UserPassDto;
 import com.fvps.backend.domain.dto.user.UserSummaryDto;
 import com.fvps.backend.domain.entities.User;
+import com.fvps.backend.domain.enums.UserRole;
 import com.fvps.backend.domain.enums.UserStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,8 +16,10 @@ import java.util.UUID;
 /**
  * Core service for managing user account lifecycles and profile data.
  * <p>
- * This interface handles both administrative tasks (blocking users, listing accounts)
- * and self-service operations (profile updates, password changes, pass generation).
+ * This interface handles both administrative tasks (blocking users, listing
+ * accounts)
+ * and self-service operations (profile updates, password changes, pass
+ * generation).
  * </p>
  */
 public interface UserService {
@@ -36,10 +39,15 @@ public interface UserService {
      * Optimized for administrative dashboards.
      * </p>
      *
+     * @param search   optional search query (name, surname, email).
+     * @param role     optional role filter.
+     * @param status   optional status filter.
+     * @param level    optional clearance level filter.
      * @param pageable pagination information.
      * @return a page of user summaries.
      */
-    Page<UserSummaryDto> getAllUsersSummary(Pageable pageable);
+    Page<UserSummaryDto> getAllUsersSummary(String search, UserRole role, UserStatus status, Integer level,
+            Pageable pageable);
 
     /**
      * Updates the administrative status of a user (e.g. BLOCK, ACTIVATE, DELETE).
@@ -98,7 +106,8 @@ public interface UserService {
     /**
      * Increments the failed login attempt counter for a user.
      * <p>
-     * If the counter exceeds the configured threshold, the account is temporarily locked.
+     * If the counter exceeds the configured threshold, the account is temporarily
+     * locked.
      * </p>
      *
      * @param userId the UUID of the user who failed to authenticate.
@@ -124,12 +133,14 @@ public interface UserService {
      *
      * @param userEmail the email of the requesting user.
      * @return a byte array containing the PDF.
-     * @throws IllegalStateException if the user is not active or lacks required trainings.
+     * @throws IllegalStateException if the user is not active or lacks required
+     *                               trainings.
      */
     byte[] generateMyPassPdf(String userEmail);
 
     /**
-     * Retrieves the data necessary to render the digital pass on the frontend/mobile view.
+     * Retrieves the data necessary to render the digital pass on the
+     * frontend/mobile view.
      *
      * @param email the email of the user.
      * @return DTO containing pass details (QR code, clearance level, validity).
