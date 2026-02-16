@@ -1,6 +1,6 @@
 package com.fvps.backend.domain.dto.user;
 
-import com.fvps.backend.domain.enums.UserStatus;
+import com.fvps.backend.domain.dto.training.UserTrainingDto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
@@ -21,18 +21,24 @@ public class UserPassDto {
     @Schema(description = "Company name", example = "External Logistics Ltd.")
     private String companyName;
 
-    @Schema(description = "Current status. Determines if the pass is valid (must be ACTIVE).", example = "ACTIVE")
-    private UserStatus status;
+    @Schema(description = "URL to the user's profile photo", example = "/uploads/photos/user-123.jpg")
+    private String photoUrl;
 
-    @Schema(description = "List of titles of currently valid trainings", example = "[\"OHS Safety Level 1\", \"Fire Safety\"]")
-    private List<String> validTrainings;
+    @Schema(description = "User's email address", example = "john.doe@fvps.com")
+    private String email;
+
+    @Schema(description = "User's phone number", example = "+48123456789")
+    private String phoneNumber;
 
     @Schema(description = "Security clearance level calculated from valid trainings", example = "2")
-    private int securityClearanceLevel;
+    private int clearanceLevel;
 
     @Schema(
-            description = "Base64 encoded QR code image (PNG format). Contains encrypted user ID and timestamp.",
-            example = "iVBORw0KGgoAAAANSUhEUgAA..."
+            description = "String content of the QR code (usually encrypted data)",
+            example = "U2FsdGVkX1+..."
     )
-    private String qrCodeBase64;
+    private String qrCodeContent;
+
+    @Schema(description = "List of valid trainings completed by the user")
+    private List<UserTrainingDto> validTrainings;
 }
