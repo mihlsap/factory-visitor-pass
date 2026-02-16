@@ -5,9 +5,11 @@ import com.fvps.backend.domain.dto.user.UpdateUserRequest;
 import com.fvps.backend.domain.dto.user.UserPassDto;
 import com.fvps.backend.domain.dto.user.UserSummaryDto;
 import com.fvps.backend.domain.entities.User;
+import com.fvps.backend.domain.enums.UserRole;
 import com.fvps.backend.domain.enums.UserStatus;
 import com.fvps.backend.repositories.UserRepository;
 import com.fvps.backend.services.*;
+import com.fvps.backend.domain.enums.AppMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
@@ -59,16 +61,20 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<UserSummaryDto> getAllUsersSummary(Pageable pageable) {
-        return userRepository.findAll(pageable).map(this::mapUserToSummary);
+    public Page<UserSummaryDto> getAllUsersSummary(String search, UserRole role, UserStatus status, Integer level,
+            Pageable pageable) {
+        return userRepository.findUsersWithFilters(search, role, status, level, pageable)
+                .map(this::mapUserToSummary);
     }
 
     /**
      * {@inheritDoc}
      * <p>
      * <b>Implementation Note:</b>
-     * If the new status is {@link UserStatus#ACTIVE}, this method automatically resets
-     * {@code failedLoginAttempts} and removes the {@code lockoutTime}. This allows admins
+     * If the new status is {@link UserStatus#ACTIVE}, this method automatically
+     * resets
+     * {@code failedLoginAttempts} and removes the {@code lockoutTime}. This allows
+     * admins
      * to manually unblock users who were locked out due to brute-force attempts.
      * </p>
      */
@@ -91,7 +97,7 @@ public class UserServiceImpl implements UserService {
 
         userRepository.save(user);
 
-        auditLogService.logEvent(userId, "USER_STATUS_CHANGE",
+        auditLogService.logEvent(userId, AppMessage.USER_STATUS_CHANGED.name(),
                 "Status changed from " + oldStatus + " to " + newStatus);
 
         sendAccountStatusEmail(user, newStatus);
@@ -116,9 +122,12 @@ public class UserServiceImpl implements UserService {
      * <p>
      * <b>Implementation Note:</b>
      * <ul>
-     * <li><b>Optimistic Locking:</b> Throws {@link OptimisticLockingFailureException} if the version check fails.</li>
-     * <li><b>File Handling:</b> If a new photo is provided, the old photo file is physically deleted from storage to prevent orphans.</li>
-     * <li><b>Audit:</b> Logs distinct events for photo updates vs. data updates.</li>
+     * <li><b>Optimistic Locking:</b> Throws
+     * {@link OptimisticLockingFailureException} if the version check fails.</li>
+     * <li><b>File Handling:</b> If a new photo is provided, the old photo file is
+     * physically deleted from storage to prevent orphans.</li>
+     * <li><b>Audit:</b> Logs distinct events for photo updates vs. data
+     * updates.</li>
      * </ul>
      * </p>
      */
@@ -131,8 +140,7 @@ public class UserServiceImpl implements UserService {
         if (request.getVersion() != null && !request.getVersion().equals(user.getVersion())) {
             throw new OptimisticLockingFailureException(
                     "User profile version mismatch. Client has version " + request.getVersion() +
-                            " but DB has " + user.getVersion()
-            );
+                            " but DB has " + user.getVersion());
         }
 
         if (!user.getName().equals(request.getName())) {
@@ -164,13 +172,13 @@ public class UserServiceImpl implements UserService {
                 fileStorageService.deletePhoto(oldPhotoFilename);
             }
 
-            auditLogService.logEvent(user.getId(), "PHOTO_UPDATED", "Updated profile photo.");
+            auditLogService.logEvent(user.getId(), AppMessage.PROFILE_UPDATED.name(), "Updated profile photo.");
             dataChanged = true;
         }
 
         if (dataChanged) {
             userRepository.save(user);
-            auditLogService.logEvent(user.getId(), "PROFILE_UPDATE", "Updated profile details.");
+            auditLogService.logEvent(user.getId(), AppMessage.PROFILE_UPDATED.name(), "Updated profile details.");
         }
     }
 
@@ -181,23 +189,31 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
-            auditLogService.logEvent(user.getId(), "PASSWORD_CHANGE_FAILED", "Incorrect current password provided.");
+            auditLogService.logEvent(user.getId(), AppMessage.PASSWORD_CHANGE_FAILED.name(),
+                    "Incorrect current password provided.");
             throw new RuntimeException("Current password is incorrect.");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new RuntimeException("New password cannot be the same as the current one.");
         }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
 
-        auditLogService.logEvent(user.getId(), "PASSWORD_CHANGED", "User changed their password.");
+        auditLogService.logEvent(user.getId(), AppMessage.PASSWORD_CHANGED.name(), "User changed their password.");
     }
 
     /**
      * {@inheritDoc}
      * <p>
      * <b>Implementation Note:</b>
-     * Annotated with {@code @Transactional(propagation = Propagation.REQUIRES_NEW)}.
-     * This ensures the increment of login attempts is committed in a <b>separate transaction</b>.
-     * Even if the main login process throws an exception (which rolls back the main transaction),
+     * Annotated with
+     * {@code @Transactional(propagation = Propagation.REQUIRES_NEW)}.
+     * This ensures the increment of login attempts is committed in a <b>separate
+     * transaction</b>.
+     * Even if the main login process throws an exception (which rolls back the main
+     * transaction),
      * this security counter update persists, preventing brute-force attacks.
      * </p>
      */
@@ -211,10 +227,10 @@ public class UserServiceImpl implements UserService {
 
         if (newAttempts >= maxFailedAttempts) {
             user.setLockoutTime(LocalDateTime.now(clock).plusMinutes(lockTimeMinutes));
-            auditLogService.logEvent(user.getId(), "ACCOUNT_LOCKED",
+            auditLogService.logEvent(user.getId(), AppMessage.ACCOUNT_LOCKED.name(),
                     "Account locked after " + maxFailedAttempts + " failed attempts.");
         } else {
-            auditLogService.logEvent(user.getId(), "LOGIN_FAILED",
+            auditLogService.logEvent(user.getId(), AppMessage.LOGIN_FAILED.name(),
                     "Failed login attempt (" + newAttempts + "/" + maxFailedAttempts + ").");
         }
         userRepository.save(user);
@@ -227,15 +243,18 @@ public class UserServiceImpl implements UserService {
         user.setFailedLoginAttempts(0);
         user.setLockoutTime(null);
         userRepository.save(user);
-        auditLogService.logEvent(user.getId(), "LOCKOUT_EXPIRED", "Temporary lockout expired. Counters reset.");
+        auditLogService.logEvent(user.getId(), AppMessage.LOCKOUT_EXPIRED.name(),
+                "Temporary lockout expired. Counters reset.");
     }
 
     /**
      * {@inheritDoc}
      * <p>
      * <b>Implementation Note:</b>
-     * Forces a fresh recalculation of user clearance via {@link UserClearanceService} before generating the PDF.
-     * This ensures that if a training expired 1 second ago, the generated pass will correctly reflect the downgraded status.
+     * Forces a fresh recalculation of user clearance via
+     * {@link UserClearanceService} before generating the PDF.
+     * This ensures that if a training expired 1 second ago, the generated pass will
+     * correctly reflect the downgraded status.
      * </p>
      */
     @Override
@@ -257,12 +276,13 @@ public class UserServiceImpl implements UserService {
         var validTrainings = trainingProgressService.getValidTrainingsForUser(user.getId());
 
         if (validTrainings.isEmpty()) {
-            throw new IllegalStateException("You have no valid, completed trainings. Please complete required trainings first.");
+            throw new IllegalStateException(
+                    "You have no valid, completed trainings. Please complete required trainings first.");
         }
 
         byte[] pdf = pdfGeneratorService.generatePassPdf(user, validTrainings);
 
-        auditLogService.logEvent(user.getId(), "PASS_DOWNLOADED", "User downloaded their own pass.");
+        auditLogService.logEvent(user.getId(), AppMessage.PASS_DOWNLOADED.name(), "User downloaded their own pass.");
         return pdf;
     }
 
@@ -318,17 +338,17 @@ public class UserServiceImpl implements UserService {
 
         switch (status) {
             case BLOCKED -> {
-                args = new Object[]{user.getName()};
+                args = new Object[] { user.getName() };
                 subject = messageSource.getMessage("email.account.blocked.subject", null, defaultLocale);
                 content = messageSource.getMessage("email.account.blocked.body", args, defaultLocale);
             }
             case DELETED -> {
-                args = new Object[]{user.getName()};
+                args = new Object[] { user.getName() };
                 subject = messageSource.getMessage("email.account.deleted.subject", null, defaultLocale);
                 content = messageSource.getMessage("email.account.deleted.body", args, defaultLocale);
             }
             case ACTIVE -> {
-                args = new Object[]{user.getName(), frontendUrl + "/login"};
+                args = new Object[] { user.getName(), frontendUrl + "/login" };
                 subject = messageSource.getMessage("email.account.activated.subject", null, defaultLocale);
                 content = messageSource.getMessage("email.account.activated.body", args, defaultLocale);
             }
