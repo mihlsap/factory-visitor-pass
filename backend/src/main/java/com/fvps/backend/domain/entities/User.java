@@ -13,9 +13,12 @@ import java.util.UUID;
 /**
  * Represents a user of the system.
  * <p>
- * This entity maps to the {@code users} table and contains all information related to
- * authentication, authorization, and personal profile data. It handles critical security
- * features like account locking (brute-force protection), two-factor authentication (2FA),
+ * This entity maps to the {@code users} table and contains all information
+ * related to
+ * authentication, authorization, and personal profile data. It handles critical
+ * security
+ * features like account locking (brute-force protection), two-factor
+ * authentication (2FA),
  * and password recovery.
  * </p>
  */
@@ -45,7 +48,8 @@ public class User {
     /**
      * The encrypted (hashed) password.
      * <p>
-     * Never store plain-text passwords here. Use {@link org.springframework.security.crypto.password.PasswordEncoder}.
+     * Never store plain-text passwords here. Use
+     * {@link org.springframework.security.crypto.password.PasswordEncoder}.
      * </p>
      */
     @Column(nullable = false)
@@ -97,7 +101,8 @@ public class User {
     /**
      * Counter for consecutive failed login attempts.
      * <p>
-     * Reset to 0 after a successful login. If it exceeds the limit, the account is temporarily locked.
+     * Reset to 0 after a successful login. If it exceeds the limit, the account is
+     * temporarily locked.
      * </p>
      */
     @Builder.Default
@@ -153,7 +158,8 @@ public class User {
     /**
      * Optimistic locking version.
      * <p>
-     * Prevents lost updates when multiple threads/requests try to modify the user data simultaneously.
+     * Prevents lost updates when multiple threads/requests try to modify the user
+     * data simultaneously.
      * </p>
      */
     @Version
@@ -167,6 +173,7 @@ public class User {
      * </p>
      */
     @Column(nullable = false, columnDefinition = "integer default 0")
+    @Builder.Default
     private int clearanceLevel = 0;
 
     /**
@@ -198,11 +205,18 @@ public class User {
      */
     @Override
     public final boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null) return false;
-        Class<?> oEffectiveClass = o instanceof HibernateProxy ? ((HibernateProxy) o).getHibernateLazyInitializer().getPersistentClass() : o.getClass();
-        Class<?> thisEffectiveClass = this instanceof HibernateProxy ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass() : this.getClass();
-        if (thisEffectiveClass != oEffectiveClass) return false;
+        if (this == o)
+            return true;
+        if (o == null)
+            return false;
+        Class<?> oEffectiveClass = o instanceof HibernateProxy
+                ? ((HibernateProxy) o).getHibernateLazyInitializer().getPersistentClass()
+                : o.getClass();
+        Class<?> thisEffectiveClass = this instanceof HibernateProxy
+                ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass()
+                : this.getClass();
+        if (thisEffectiveClass != oEffectiveClass)
+            return false;
         User user = (User) o;
         return getId() != null && Objects.equals(getId(), user.getId());
     }
@@ -212,6 +226,8 @@ public class User {
      */
     @Override
     public final int hashCode() {
-        return this instanceof HibernateProxy ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass().hashCode() : getClass().hashCode();
+        return this instanceof HibernateProxy
+                ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass().hashCode()
+                : getClass().hashCode();
     }
 }
