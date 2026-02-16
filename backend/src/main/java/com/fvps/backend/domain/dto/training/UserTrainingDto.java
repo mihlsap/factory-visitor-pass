@@ -28,8 +28,11 @@ public class UserTrainingDto {
     @Schema(description = "Index of the current active module", example = "2")
     private int currentModuleIndex;
 
-    @Schema(description = "Quiz score (if completed)", example = "0.9")
-    private Double quizScore;
+    @Schema(description = "Total number of modules from the training definition", example = "3")
+    private int totalModules;
+
+    @Schema(description = "Calculated progress percentage (0-100)", example = "33")
+    private int progressPercentage;
 
     @Schema(description = "Completion timestamp", example = "2023-10-25T14:30:00")
     private LocalDateTime completedAt;
@@ -37,6 +40,4 @@ public class UserTrainingDto {
     @Schema(description = "Training validity expiration date", example = "2024-10-25T14:30:00")
     private LocalDateTime validUntil;
 
-    @Schema(description = "Indicates if the training was manually revoked by admin", example = "false")
-    private boolean isPassRevoked;
 }
