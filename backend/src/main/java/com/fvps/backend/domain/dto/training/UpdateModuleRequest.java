@@ -1,6 +1,7 @@
 package com.fvps.backend.domain.dto.training;
 
 import com.fvps.backend.domain.enums.ModuleType;
+import com.fvps.backend.domain.enums.ResetMode;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -28,6 +29,9 @@ public class UpdateModuleRequest {
     @Min(0)
     private Integer orderIndex;
 
-    @Schema(description = "Force progress reset for users", example = "true")
-    private boolean resetProgress;
+    @Schema(description = "Reset mode: NONE, CURRENT_ONLY, or CASCADE", example = "CURRENT_ONLY")
+    private ResetMode resetMode;
+
+    @Schema(description = "Optional passing threshold for this quiz (0.0 to 1.0)", example = "0.8")
+    private Double passingThreshold;
 }
