@@ -3,8 +3,10 @@ package com.fvps.backend.domain.enums;
 /**
  * Defines the security roles available within the application.
  * <p>
- * These roles determine the authorisation levels and access rights to specific API endpoints
- * and system features. They are used by Spring Security to control access decisions.
+ * These roles determine the authorisation levels and access rights to specific
+ * API endpoints
+ * and system features. They are used by Spring Security to control access
+ * decisions.
  * </p>
  */
 public enum UserRole {
@@ -20,7 +22,8 @@ public enum UserRole {
     /**
      * Standard internal employee.
      * <p>
-     * Has access to their own profile, assigned trainings, and personal pass generation.
+     * Has access to their own profile, assigned trainings, and personal pass
+     * generation.
      * Represents a permanent worker of the factory/company.
      * </p>
      */
@@ -29,7 +32,8 @@ public enum UserRole {
     /**
      * Security personnel (Gate Guard).
      * <p>
-     * Has restricted access, primarily focused on verifying user passes via QR code scanning
+     * Has restricted access, primarily focused on verifying user passes via QR code
+     * scanning
      * at entry checkpoints.
      * </p>
      */
@@ -38,7 +42,8 @@ public enum UserRole {
     /**
      * External visitor or temporary contractor.
      * <p>
-     * Has access to their own profile, assigned trainings, and personal pass generation.
+     * Has access to their own profile, assigned trainings, and personal pass
+     * generation.
      * </p>
      */
     GUEST
