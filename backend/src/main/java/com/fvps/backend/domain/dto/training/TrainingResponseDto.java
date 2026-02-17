@@ -1,15 +1,20 @@
 package com.fvps.backend.domain.dto.training;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fvps.backend.domain.enums.TrainingType;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 import lombok.Data;
-
+import com.fvps.backend.domain.enums.ProgressStatus;
 import java.util.List;
 import java.util.UUID;
 
 @Data
-@Builder
+@SuperBuilder
+@NoArgsConstructor
+@AllArgsConstructor
 public class TrainingResponseDto {
 
     @Schema(description = "Training UUID", example = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11")
@@ -33,9 +38,20 @@ public class TrainingResponseDto {
     @Schema(description = "List of modules included in the training")
     private List<ModuleDto> modules;
 
+    @Schema(description = "ID of the module that acts as the entry point (resume/start). Null for admin view.")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private UUID currentModuleId;
+
+    @Schema(description = "Current progress status for the user. Null for admin view.")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private ProgressStatus status;
+
     @Schema(description = "Current version for optimistic locking", example = "1")
     private Long version;
 
     @Schema(description = "Security level granted by this training", example = "1")
     private int securityLevel;
+
+    @Schema(description = "Excluded from score", example = "false")
+    private boolean excludedFromScore;
 }
