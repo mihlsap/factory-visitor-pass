@@ -14,7 +14,8 @@ import java.util.UUID;
 /**
  * Represents a single content unit within a {@link Training}.
  * <p>
- * A module corresponds to a step in the training course, such as a video lecture,
+ * A module corresponds to a step in the training course, such as a video
+ * lecture,
  * a PDF document to read, or a quiz to solve. Modules are ordered sequentially
  * using {@link #orderIndex}.
  * </p>
@@ -55,7 +56,8 @@ public class TrainingModule {
     /**
      * The type of content provided by this module.
      * <p>
-     * Determines how the frontend renders the module (e.g., video player vs PDF viewer vs quiz form).
+     * Determines how the frontend renders the module (e.g. video player vs PDF
+     * viewer vs a quiz form).
      * </p>
      */
     @Enumerated(EnumType.STRING)
@@ -71,9 +73,18 @@ public class TrainingModule {
     private String contentUrl;
 
     /**
+     * Optional passing threshold for this specific module (0.0 to 1.0).
+     * <p>
+     * If null, the training's global passing threshold is used.
+     * </p>
+     */
+    private Double passingThreshold;
+
+    /**
      * The parent training this module belongs to.
      * <p>
-     * Marked with {@code @JsonIgnore} to prevent infinite recursion during JSON serialization
+     * Marked with {@code @JsonIgnore} to prevent infinite recursion during JSON
+     * serialization
      * (Bi-directional relationship).
      * </p>
      */
@@ -105,16 +116,24 @@ public class TrainingModule {
     /**
      * Checks equality based on the entity identifier (ID).
      * <p>
-     * Safely handles Hibernate proxies to facilitate correct comparisons within persistence contexts.
+     * Safely handles Hibernate proxies to facilitate correct comparisons within
+     * persistence contexts.
      * </p>
      */
     @Override
     public final boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null) return false;
-        Class<?> oEffectiveClass = o instanceof HibernateProxy ? ((HibernateProxy) o).getHibernateLazyInitializer().getPersistentClass() : o.getClass();
-        Class<?> thisEffectiveClass = this instanceof HibernateProxy ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass() : this.getClass();
-        if (thisEffectiveClass != oEffectiveClass) return false;
+        if (this == o)
+            return true;
+        if (o == null)
+            return false;
+        Class<?> oEffectiveClass = o instanceof HibernateProxy
+                ? ((HibernateProxy) o).getHibernateLazyInitializer().getPersistentClass()
+                : o.getClass();
+        Class<?> thisEffectiveClass = this instanceof HibernateProxy
+                ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass()
+                : this.getClass();
+        if (thisEffectiveClass != oEffectiveClass)
+            return false;
         TrainingModule that = (TrainingModule) o;
         return getId() != null && Objects.equals(getId(), that.getId());
     }
@@ -124,6 +143,8 @@ public class TrainingModule {
      */
     @Override
     public final int hashCode() {
-        return this instanceof HibernateProxy ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass().hashCode() : getClass().hashCode();
+        return this instanceof HibernateProxy
+                ? ((HibernateProxy) this).getHibernateLazyInitializer().getPersistentClass().hashCode()
+                : getClass().hashCode();
     }
 }
