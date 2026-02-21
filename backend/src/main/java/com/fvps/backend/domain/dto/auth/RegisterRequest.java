@@ -23,7 +23,11 @@ public class RegisterRequest {
     @NotBlank(message = "Last name is required")
     private String surname;
 
-    @Schema(description = "Email address (must be unique)", example = "jan.kowalski@fvps.com", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(
+            description = "Email address (must be unique)",
+            example = "jan.kowalski@fvps.com",
+            requiredMode = Schema.RequiredMode.REQUIRED
+    )
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
     private String email;
