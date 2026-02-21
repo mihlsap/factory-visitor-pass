@@ -1,5 +1,6 @@
 package com.fvps.backend.domain.dto.training;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fvps.backend.domain.enums.ModuleType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -32,4 +33,14 @@ public class ModuleDto {
 
     @Schema(description = "Questions (if type is QUIZ)")
     private List<QuestionDto> questions;
+
+    @Schema(description = "Passing threshold (0.0 - 1.0) for this module", example = "0.8")
+    private Double passingThreshold;
+
+    @Schema(description = "Whether the module is passed (for quizzes)", example = "true")
+    private Boolean passed;
+
+    @Schema(description = "Indicates if the module has been completed by the user. Null for admin view.")
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Boolean completed;
 }
